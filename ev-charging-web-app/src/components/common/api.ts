@@ -1,9 +1,12 @@
 import axios, { AxiosError, type AxiosRequestConfig } from "axios";
 import toast from "react-hot-toast";
 import type { PaginatedResponse } from "../../types";
+import { navigateTo } from "./navigation";
 
 const API_BASE_URL =
   import.meta.env.VITE_APP_API_BASE_URL || "http://localhost:3000/api";
+
+let isRedirecting = false;
 
 // Create Axios instance
 const api = axios.create({
@@ -29,7 +32,18 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    console.error("API Error:", error.response?.status, error.response?.data);
+    const status = error.response?.status;
+    console.error("API Error:", status, error.response?.data);
+
+    if (status === 401 && !isRedirecting) {
+      isRedirecting = true;
+      localStorage.removeItem("token");
+      toast.error("Session expired. Please log in again.");
+      setTimeout(() => {
+        navigateTo("/login");
+      }, 100);
+      return Promise.reject(error);
+    }
     return Promise.reject(error);
   }
 );
