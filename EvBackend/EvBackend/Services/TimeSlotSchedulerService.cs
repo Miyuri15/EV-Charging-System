@@ -137,5 +137,28 @@ namespace EvBackend.Services
 
             return result;
         }
+
+        public async Task UpdateExpiredTimeSlotsToAvailableAsync()
+        {
+            try
+            {
+                var nowUtc = DateTime.UtcNow;
+
+                // Find timeslots where EndTime is before now and status is not already "Available"
+                var filter = Builders<TimeSlot>.Filter.Lt(t => t.EndTime, nowUtc) &
+                             Builders<TimeSlot>.Filter.Ne(t => t.Status, "Available");
+
+                var update = Builders<TimeSlot>.Update.Set(t => t.Status, "Available");
+
+                var result = await _timeSlots.UpdateManyAsync(filter, update);
+
+                _logger.LogInformation("Updated {Count} expired timeslots to 'Available' at {Time}.",
+                    result.ModifiedCount, nowUtc);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating expired timeslots to 'Available'.");
+            }
+        }
     }
 }
