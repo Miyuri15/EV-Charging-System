@@ -3,6 +3,7 @@ package com.evcharging.mobile;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -12,6 +13,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.evcharging.mobile.model.User;
 import com.evcharging.mobile.network.ApiClient;
@@ -26,6 +28,7 @@ public class OwnerProfileActivity extends AppCompatActivity {
     private ImageButton btnBack;
     private SessionManager sessionManager;
     private ApiClient apiClient;
+    private SwipeRefreshLayout swipeRefresh;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,6 +37,9 @@ public class OwnerProfileActivity extends AppCompatActivity {
 
         sessionManager = new SessionManager(this);
         apiClient = new ApiClient(sessionManager);
+
+        // Initialize swipe refresh
+        swipeRefresh = findViewById(R.id.swipeRefresh);
 
         tvName = findViewById(R.id.tvOwnerName);
         tvEmail = findViewById(R.id.tvOwnerEmail);
@@ -47,12 +53,18 @@ public class OwnerProfileActivity extends AppCompatActivity {
         btnForgetUser = findViewById(R.id.btnForgetUser);
 
         btnBack.setOnClickListener(v -> finish());
-        btnEditProfile.setOnClickListener(v -> startActivity(new Intent(this, OwnerEditProfileActivity.class)));
+        btnEditProfile.setOnClickListener(v -> {
+            // Start edit profile activity
+            Intent intent = new Intent(this, OwnerEditProfileActivity.class);
+            startActivity(intent);
+        });
 
         showLocalUserProfile();
 
-        // Load profile from API
-        new LoadProfileTask().execute();
+        // Set up swipe refresh
+        swipeRefresh.setOnRefreshListener(() -> {
+            new LoadProfileTask().execute();
+        });
 
         // Deactivate button
         btnDeactivate.setOnClickListener(v -> new androidx.appcompat.app.AlertDialog.Builder(this)
@@ -84,6 +96,18 @@ public class OwnerProfileActivity extends AppCompatActivity {
 
         setupFooterNavigation();
         highlightActiveTab("profile");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Refresh profile data every time the activity becomes visible
+        refreshProfileData();
+    }
+
+    private void refreshProfileData() {
+        // Force refresh from API to get updated data
+        new LoadProfileTask().execute();
     }
 
     // ---------------- Footer Navigation Setup ----------------
@@ -167,7 +191,6 @@ public class OwnerProfileActivity extends AppCompatActivity {
         protected User doInBackground(Void... voids) {
             ApiResponse response = apiClient.getUser();
             if (response.isSuccess() && response.getData() != null) {
-                // Parse JSON into User object
                 return apiClient.parseLoggedOwner(response.getData());
             }
             return null;
@@ -175,29 +198,44 @@ public class OwnerProfileActivity extends AppCompatActivity {
 
         @Override
         protected void onPostExecute(User user) {
+            swipeRefresh.setRefreshing(false); // Stop refresh animation
             if (user != null) {
-                // Save updated user to session
-                sessionManager.saveLoggedInUser(user);
-
-                // Update UI
-                tvName.setText(user.getFullName() != null ? user.getFullName() : "N/A");
-                tvEmail.setText(user.getEmail() != null ? user.getEmail() : "N/A");
-                tvNic.setText(user.getUserId() != null ? "NIC: " + user.getUserId() : "NIC: N/A");
-
-                if (user.isActive()) {
-                    tvAccountStatus.setText("Active");
-                    tvAccountStatus.setTextColor(getResources().getColor(R.color.green));
-                    btnDeactivate.setVisibility(View.VISIBLE);
-                    btnRequestReactivation.setVisibility(View.GONE);
-                } else {
-                    tvAccountStatus.setText("Deactivated");
-                    tvAccountStatus.setTextColor(getResources().getColor(R.color.red));
-                    btnDeactivate.setVisibility(View.GONE);
-                    btnRequestReactivation.setVisibility(View.VISIBLE);
-                }
+                // Update the UI with the fresh data from API
+                updateUIWithUserData(user);
+                Log.d("OwnerProfile", "Profile data refreshed from API: " + user.getFullName());
             } else {
                 Toast.makeText(OwnerProfileActivity.this,
                         "Failed to load profile", Toast.LENGTH_SHORT).show();
+                // Fallback to local data
+                showLocalUserProfile();
+            }
+        }
+    }
+
+    // Add method to update UI with fresh user data
+    private void updateUIWithUserData(User user) {
+        if (user != null) {
+            tvName.setText(user.getFullName() != null ? user.getFullName() : "N/A");
+            tvEmail.setText(user.getEmail() != null ? user.getEmail() : "N/A");
+            tvNic.setText(user.getUserId() != null ? "NIC: " + user.getUserId() : "NIC: N/A");
+
+            // ✅ ADD: Display phone number if available
+            // If you have a TextView for phone in your layout, use it
+            // tvPhone.setText(user.getPhone() != null ? "Phone: " + user.getPhone() : "Phone: Not set");
+
+            // Or log it for debugging:
+            Log.d("OwnerProfile", "Displaying user - Phone: '" + user.getPhone() + "'");
+
+            if (user.isActive()) {
+                tvAccountStatus.setText("Active");
+                tvAccountStatus.setTextColor(getResources().getColor(R.color.green));
+                btnDeactivate.setVisibility(View.VISIBLE);
+                btnRequestReactivation.setVisibility(View.GONE);
+            } else {
+                tvAccountStatus.setText("Deactivated");
+                tvAccountStatus.setTextColor(getResources().getColor(R.color.red));
+                btnDeactivate.setVisibility(View.GONE);
+                btnRequestReactivation.setVisibility(View.VISIBLE);
             }
         }
     }
@@ -262,22 +300,6 @@ public class OwnerProfileActivity extends AppCompatActivity {
 
     private void showLocalUserProfile() {
         User localUser = sessionManager.getLoggedInUser();
-        if (localUser != null) {
-            tvName.setText(localUser.getFullName() != null ? localUser.getFullName() : "N/A");
-            tvEmail.setText(localUser.getEmail() != null ? localUser.getEmail() : "N/A");
-            tvNic.setText(localUser.getUserId() != null ? "NIC: " + localUser.getUserId() : "NIC: N/A");
-
-            if (localUser.isActive()) {
-                tvAccountStatus.setText("Active");
-                tvAccountStatus.setTextColor(getResources().getColor(R.color.green));
-                btnDeactivate.setVisibility(View.VISIBLE);
-                btnRequestReactivation.setVisibility(View.GONE);
-            } else {
-                tvAccountStatus.setText("Deactivated");
-                tvAccountStatus.setTextColor(getResources().getColor(R.color.red));
-                btnDeactivate.setVisibility(View.GONE);
-                btnRequestReactivation.setVisibility(View.VISIBLE);
-            }
-        }
+        updateUIWithUserData(localUser);
     }
 }

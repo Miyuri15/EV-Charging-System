@@ -18,8 +18,8 @@
     <application
         android:name=".MyApp"
         android:icon="@mipmap/ic_launcher"
-        android:label="EvMobile"
-        android:theme="@style/AppTheme"
+        android:label="EVApp"
+        android:theme="@style/AppTheme.NoActionBar"
         android:usesCleartextTraffic="true"
         tools:replace="android:label">
 
@@ -45,7 +45,7 @@
             android:name=".OwnerBookingActivity"
             android:exported="false"
             android:screenOrientation="portrait"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+            android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".BookingConfirmationActivity"
             android:exported="false" />

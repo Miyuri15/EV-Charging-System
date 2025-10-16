@@ -38,7 +38,7 @@ import okhttp3.Response;
  */
 public class ApiClient {
     private static final String TAG = "ApiClient";
-    private static final String BASE = "https://d61d4e1bef88.ngrok-free.app";
+    private static final String BASE = "https://d43f975b8590.ngrok-free.app";
     private static final String BASE_URL = BASE + "/api";
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
 
@@ -216,7 +216,31 @@ public class ApiClient {
     // USER PROFILE MANAGEMENT
     // ---------------------------------------------------------------------
     public ApiResponse getUser() {
-        return get("/auth/me");
+        try {
+            Request.Builder builder = new Request.Builder()
+                    .url(BASE_URL + "/auth/me")
+                    .get()
+                    .addHeader("X-Client-Type", "Mobile");
+            addAuth(builder);
+
+            Response response = client.newCall(builder.build()).execute();
+            String responseBody = response.body() != null ? response.body().string() : "";
+
+            // ✅ ADD: Debug logging for raw response
+            Log.d(TAG, "🔍 RAW /auth/me RESPONSE: " + responseBody);
+
+            logApi("GET", "/auth/me", response, responseBody);
+
+            if (response.isSuccessful())
+                return new ApiResponse(true, "Success", responseBody);
+            else {
+                JSONObject err = new JSONObject(responseBody);
+                return new ApiResponse(false, err.optString("message", "Failed"), null);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "GET request error", e);
+            return new ApiResponse(false, "Network error", null);
+        }
     }
 
     public ApiResponse updateOwnerProfile(String nic, String fullName, String email, String phone) {
@@ -474,42 +498,43 @@ public class ApiClient {
 
         try {
             JSONObject o = new JSONObject(json);
+            Log.d(TAG, "📱 Raw API response for user: " + o.toString(2));
 
-            // Extract data from API response
-            String id = o.optString("nic", null); // EV Owner uses "nic"
+            // Extract ALL data from API response (this is the source of truth)
+            String id = o.optString("nic", null);
             if (id == null || id.equals("null")) {
-                id = o.optString("id", null); // Operator uses "id"
+                id = o.optString("id", null);
             }
 
             String fullName = o.optString("fullName", null);
             String email = o.optString("email", null);
+            String phone = o.optString("phone", null); // ✅ Get phone from API response
             boolean isActive = o.optBoolean("isActive", false);
             String createdAt = o.optString("createdAt", null);
-            String phone = o.optString("phone", null);
             boolean reactivationRequested = o.optBoolean("reactivationRequested", false);
 
-            // Get user from JWT token for additional info
+            Log.d(TAG, "📱 Extracted from API - Phone: '" + phone + "'");
+
+            // Get user from JWT token for additional info (role, station info)
             User userFromToken = null;
             String token = sessionManager.getToken();
             if (token != null) {
                 userFromToken = JwtUtils.getUserFromToken(token);
             }
 
-            // Start building user - prioritize API response data
+            // ✅ FIX: Create user with ALL data from API response
             User user = new User();
 
-            // Use ID from API response (nic/id)
+            // Use ALL personal info from API response (this is the latest data)
             user.setUserId(id);
-
-            // Use personal info from API response
             user.setFullName(fullName);
             user.setEmail(email);
+            user.setPhone(phone); // ✅ This will now use the phone from API, not JWT
             user.setActive(isActive);
             user.setCreatedAt(createdAt);
-            user.setPhone(phone);
             user.setReactivationRequested(reactivationRequested);
 
-            // Use role and station info from JWT token (more reliable)
+            // Use only role and station info from JWT token
             if (userFromToken != null) {
                 user.setRole(userFromToken.getRole());
                 user.setStationId(userFromToken.getStationId());
@@ -517,11 +542,14 @@ public class ApiClient {
                 user.setStationLocation(userFromToken.getStationLocation());
             } else {
                 // Fallback if JWT parsing fails
-                user.setRole("Owner"); // Default for EV Owner app
+                user.setRole("Owner");
             }
 
             Log.d(TAG, "✅ Final parsed user - " +
                     "ID: " + user.getUserId() + ", " +
+                    "Name: " + user.getFullName() + ", " +
+                    "Email: " + user.getEmail() + ", " +
+                    "Phone: '" + user.getPhone() + "', " + // ✅ This should now show the actual phone
                     "Role: " + user.getRole() + ", " +
                     "Active: " + user.isActive() + ", " +
                     "Station: " + (user.getStationId() != null ? user.getStationId() : "None"));

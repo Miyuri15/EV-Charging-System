@@ -12,5 +12,12 @@
     <item name="btnReserveSlot" type="id" />
     <item name="btnMyBookings" type="id" />
     <item name="btnChargingHistory" type="id" />
+    <item name="chipGroup" type="id" />
+    <item name="filterCard" type="id" />
+    <item name="chipAll" type="id" />
+    <item name="chipPending" type="id" />
+    <item name="chipApproved" type="id" />
+    <item name="chipCharging" type="id" />
+    <item name="statusBadge" type="id" />
 
 </resources>

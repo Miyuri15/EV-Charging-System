@@ -1,16 +1,19 @@
 package com.evcharging.mobile;
 
-import android.app.DatePickerDialog;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.content.res.ColorStateList;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.Base64;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.*;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import com.evcharging.mobile.model.Station;
 import com.evcharging.mobile.model.SlotItem;
@@ -18,6 +21,9 @@ import com.evcharging.mobile.model.TimeSlotItem;
 import com.evcharging.mobile.network.ApiClient;
 import com.evcharging.mobile.network.ApiResponse;
 import com.evcharging.mobile.session.SessionManager;
+import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.datepicker.CalendarConstraints;
+import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -32,7 +38,7 @@ import java.util.concurrent.Executors;
 public class OwnerBookingActivity extends AppCompatActivity {
 
     private Spinner spnType, spnStation, spnSlot, spnTimeSlot;
-    private Button btnSelectDate, btnConfirmBooking;
+    private com.google.android.material.button.MaterialButton btnSelectDate, btnConfirmBooking;
     private TextView tvSelectedDate, tvHints;
     private Date selectedDate;
 
@@ -50,7 +56,7 @@ public class OwnerBookingActivity extends AppCompatActivity {
     private List<SlotItem> slots = new ArrayList<>();
     private List<TimeSlotItem> timeSlots = new ArrayList<>();
 
-    // Demo location
+    // Location handling from new version
     private static final double DEFAULT_LAT = 6.9908661;
     private static final double DEFAULT_LON = 79.9395566;
     private static final double DEFAULT_RADIUS = 10.0;
@@ -68,15 +74,15 @@ public class OwnerBookingActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_owner_booking);
 
-        // --- Setup Header Back Button ---
-        ImageButton btnBack = findViewById(R.id.btnBack);
-        if (btnBack != null) {
-            btnBack.setOnClickListener(v -> onBackPressed());
-        }
+        // Setup Material Toolbar
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        toolbar.setNavigationOnClickListener(v -> onBackPressed());
 
         sessionManager = new SessionManager(this);
         apiClient = new ApiClient(sessionManager);
 
+        // Get location data from new version
         Intent intent = getIntent();
         if (intent != null) {
             if (intent.hasExtra("current_lat") && intent.hasExtra("current_lng")) {
@@ -90,6 +96,9 @@ public class OwnerBookingActivity extends AppCompatActivity {
                 preselectedLat = intent.getDoubleExtra("selected_station_lat", 0);
                 preselectedLng = intent.getDoubleExtra("selected_station_lng", 0);
                 preselectedLocation = intent.getStringExtra("selected_station_location");
+
+                Log.d("OwnerBookingActivity",
+                        "Selected station: " + preselectedStationName + " (" + preselectedLocation + ")");
             }
         }
 
@@ -99,6 +108,7 @@ public class OwnerBookingActivity extends AppCompatActivity {
         setupConfirm();
         setupFooterNavigation();
         highlightActiveTab("home");
+        setupEnhancedUI();
     }
 
     // ---------------- Footer Navigation Setup ----------------
@@ -108,7 +118,7 @@ public class OwnerBookingActivity extends AppCompatActivity {
         LinearLayout navProfile = findViewById(R.id.navProfile);
 
         if (navHome == null || navBookings == null || navProfile == null)
-            return; // Footer not included on this layout
+            return;
 
         navHome.setOnClickListener(v -> {
             Intent i = new Intent(this, OwnerHomeActivity.class);
@@ -172,8 +182,6 @@ public class OwnerBookingActivity extends AppCompatActivity {
         }
     }
 
-    // ----------------------------------------------------------
-
     private void bindViews() {
         spnType = findViewById(R.id.spnType);
         spnStation = findViewById(R.id.spnStation);
@@ -185,16 +193,71 @@ public class OwnerBookingActivity extends AppCompatActivity {
         tvHints = findViewById(R.id.tvHints);
     }
 
-    private void setupTypeSpinner() {
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                this, android.R.layout.simple_spinner_item, new String[] { "AC", "DC" });
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spnType.setAdapter(adapter);
+    private void setupEnhancedUI() {
+        setupSelectionValidation();
+        updateConfirmButtonState();
+    }
+
+    private void setupSelectionValidation() {
         spnType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
                 selectedType = (String) parent.getItemAtPosition(pos);
                 loadStationsByType(selectedType);
+                updateConfirmButtonState();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
+
+        spnStation.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (stations != null && position < stations.size()) {
+                    selectedStationId = stations.get(position).getStationId();
+                    clearSlots();
+                    clearTimeSlots();
+                    updateConfirmButtonState();
+
+                    if (selectedDateStr != null) {
+                        loadSlotsForStation(selectedStationId);
+                    } else {
+                        showHint("Please select a date to see available slots");
+                    }
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
+
+        spnSlot.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (slots != null && position < slots.size()) {
+                    selectedSlotId = slots.get(position).slotId;
+                    if (selectedStationId != null && selectedDateStr != null) {
+                        loadTimeslotsFor(selectedStationId, selectedSlotId, selectedDateStr);
+                    }
+                    updateConfirmButtonState();
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
+
+        spnTimeSlot.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (timeSlots != null && position < timeSlots.size()) {
+                    selectedTimeSlotId = timeSlots.get(position).timeSlotId;
+                    updateConfirmButtonState();
+                }
             }
 
             @Override
@@ -203,12 +266,66 @@ public class OwnerBookingActivity extends AppCompatActivity {
         });
     }
 
+    private void updateConfirmButtonState() {
+        boolean isComplete = selectedStationId != null &&
+                selectedDateStr != null &&
+                selectedSlotId != null &&
+                selectedTimeSlotId != null;
+
+        btnConfirmBooking.setEnabled(isComplete);
+        btnConfirmBooking.setAlpha(isComplete ? 1.0f : 0.6f);
+
+        if (isComplete) {
+            btnConfirmBooking
+                    .setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.primary_color)));
+        } else {
+            btnConfirmBooking.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.gray)));
+        }
+
+        if (isComplete) {
+            showHint("All selections complete! Ready to confirm your booking.");
+        } else {
+            showHint("Complete all selections to proceed with booking");
+        }
+    }
+
+    private void showHint(String message) {
+        tvHints.setText(message);
+        tvHints.animate().alpha(1f).setDuration(300).start();
+    }
+
+    private void setupTypeSpinner() {
+        List<String> types = Arrays.asList("AC", "DC");
+        ArrayAdapter<String> adapter = createEnhancedSpinnerAdapter(types);
+        adapter.setDropDownViewResource(R.layout.grid_spinner_dropdown_item);
+        spnType.setAdapter(adapter);
+    }
+
+    private ArrayAdapter<String> createEnhancedSpinnerAdapter(List<String> items) {
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, R.layout.spinner_item, items) {
+            @NonNull
+            @Override
+            public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                if (view instanceof TextView) {
+                    TextView textView = (TextView) view;
+                    textView.setTextColor(getResources().getColor(R.color.text_primary));
+                    textView.setTextSize(14);
+                }
+                return view;
+            }
+        };
+        adapter.setDropDownViewResource(R.layout.grid_spinner_dropdown_item);
+        return adapter;
+    }
+
     private void loadStationsByType(String selectedType) {
         Toast.makeText(this, "Fetching nearby " + selectedType + " stations...", Toast.LENGTH_SHORT).show();
 
         Executors.newSingleThreadExecutor().execute(() -> {
             ApiResponse res = null;
             try {
+                // Use current location from new version, fallback to default
                 double lat = currentLat != 0.0 ? currentLat : DEFAULT_LAT;
                 double lng = currentLng != 0.0 ? currentLng : DEFAULT_LON;
                 res = apiClient.getNearbyStationsByType(selectedType, lat, lng, DEFAULT_RADIUS);
@@ -239,7 +356,7 @@ public class OwnerBookingActivity extends AppCompatActivity {
                         stations.add(s);
                     }
 
-                    // 🔹 Include preselected station (from intent) if not already present
+                    // Include preselected station if not already present
                     if (preselectedStationId != null) {
                         boolean exists = false;
                         for (Station s : stations) {
@@ -256,7 +373,7 @@ public class OwnerBookingActivity extends AppCompatActivity {
                             pre.setLatitude(preselectedLat);
                             pre.setLongitude(preselectedLng);
                             pre.setType(selectedType);
-                            stations.add(0, pre); // put on top
+                            stations.add(0, pre);
                         }
                     }
 
@@ -265,14 +382,16 @@ public class OwnerBookingActivity extends AppCompatActivity {
                         return;
                     }
 
-                    ArrayAdapter<String> stnAdapter = new ArrayAdapter<>(
-                            this,
-                            android.R.layout.simple_spinner_item,
-                            stations.stream().map(Station::getName).toArray(String[]::new));
-                    stnAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                    List<String> stationNames = new ArrayList<>();
+                    for (Station station : stations) {
+                        stationNames.add(station.getName());
+                    }
+
+                    ArrayAdapter<String> stnAdapter = createEnhancedSpinnerAdapter(stationNames);
+                    stnAdapter.setDropDownViewResource(R.layout.grid_spinner_dropdown_item);
                     spnStation.setAdapter(stnAdapter);
 
-                    // 🔹 Preselect the station that came from the intent
+                    // Preselect the station that came from the intent
                     if (preselectedStationId != null) {
                         for (int i = 0; i < stations.size(); i++) {
                             if (stations.get(i).getStationId().equals(preselectedStationId)) {
@@ -282,20 +401,6 @@ public class OwnerBookingActivity extends AppCompatActivity {
                             }
                         }
                     }
-
-                    // 🔹 Handle selection change
-                    spnStation.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                        @Override
-                        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                            selectedStationId = stations.get(position).getStationId();
-                            clearSlots();
-                            clearTimeSlots();
-                        }
-
-                        @Override
-                        public void onNothingSelected(AdapterView<?> parent) {
-                        }
-                    });
 
                     toast(arr.length() + " stations found");
 
@@ -309,33 +414,99 @@ public class OwnerBookingActivity extends AppCompatActivity {
 
     private void setupDatePicker() {
         btnSelectDate.setOnClickListener(v -> {
-            Calendar now = Calendar.getInstance();
-            DatePickerDialog dialog = new DatePickerDialog(
-                    this,
-                    (view, year, month, day) -> {
-                        Calendar sel = Calendar.getInstance();
-                        sel.set(year, month, day, 0, 0, 0);
-                        selectedDate = sel.getTime();
-                        selectedDateStr = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(selectedDate);
-                        tvSelectedDate.setText(selectedDateStr);
+            // Calculate date range (today to today + 6 days)
+            Calendar today = Calendar.getInstance();
+            Calendar maxDate = Calendar.getInstance();
+            maxDate.add(Calendar.DAY_OF_MONTH, 6); // 7 days total (today + 6 next days)
 
-                        if (selectedStationId == null) {
-                            toast("Please select a station");
-                            return;
-                        }
-                        loadSlotsForStation(selectedStationId);
-                    },
-                    now.get(Calendar.YEAR),
-                    now.get(Calendar.MONTH),
-                    now.get(Calendar.DAY_OF_MONTH));
+            // Set time to beginning of day
+            today.set(Calendar.HOUR_OF_DAY, 0);
+            today.set(Calendar.MINUTE, 0);
+            today.set(Calendar.SECOND, 0);
+            today.set(Calendar.MILLISECOND, 0);
 
-            Calendar min = Calendar.getInstance();
-            Calendar max = Calendar.getInstance();
-            max.add(Calendar.DAY_OF_YEAR, 6);
-            dialog.getDatePicker().setMinDate(min.getTimeInMillis());
-            dialog.getDatePicker().setMaxDate(max.getTimeInMillis());
-            dialog.show();
+            maxDate.set(Calendar.HOUR_OF_DAY, 23);
+            maxDate.set(Calendar.MINUTE, 59);
+            maxDate.set(Calendar.SECOND, 59);
+            maxDate.set(Calendar.MILLISECOND, 999);
+
+            MaterialDatePicker<Long> datePicker = MaterialDatePicker.Builder.datePicker()
+                    .setTitleText("Select Reservation Date")
+                    .setSelection(MaterialDatePicker.todayInUtcMilliseconds())
+                    .setCalendarConstraints(
+                            new CalendarConstraints.Builder()
+                                    .setStart(today.getTimeInMillis()) // today as start date
+                                    .setEnd(maxDate.getTimeInMillis()) // 6 days from today as max
+                                    .setValidator(new DateValidatorWeekAhead())
+                                    .build())
+                    .build();
+
+            // Enable/Disable Dates and ensure the dates are visible
+            datePicker.addOnPositiveButtonClickListener(selection -> {
+                selectedDate = new Date(selection);
+                selectedDateStr = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(selectedDate);
+                String displayDate = new SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault()).format(selectedDate);
+
+                tvSelectedDate.setText(displayDate);
+                tvSelectedDate.setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.text_primary));
+
+                if (selectedStationId == null) {
+                    showHint("Please select a station first");
+                    return;
+                }
+
+                loadSlotsForStation(selectedStationId);
+                updateConfirmButtonState();
+            });
+
+            datePicker.show(getSupportFragmentManager(), "DATE_PICKER");
         });
+    }
+
+    private static class DateValidatorWeekAhead implements CalendarConstraints.DateValidator {
+
+        @Override
+        public boolean isValid(long date) {
+            Calendar selected = Calendar.getInstance();
+            selected.setTimeInMillis(date);
+
+            Calendar today = Calendar.getInstance();
+            today.set(Calendar.HOUR_OF_DAY, 0);
+            today.set(Calendar.MINUTE, 0);
+            today.set(Calendar.SECOND, 0);
+            today.set(Calendar.MILLISECOND, 0);
+
+            Calendar maxDate = Calendar.getInstance();
+            maxDate.set(Calendar.HOUR_OF_DAY, 23);
+            maxDate.set(Calendar.MINUTE, 59);
+            maxDate.set(Calendar.SECOND, 59);
+            maxDate.set(Calendar.MILLISECOND, 999);
+            maxDate.add(Calendar.DAY_OF_MONTH, 6); // 6 days from today
+
+            return !selected.before(today) && !selected.after(maxDate);
+        }
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        @Override
+        public void writeToParcel(Parcel dest, int flags) {
+            // Required for parcelable
+        }
+
+        public static final Creator<DateValidatorWeekAhead> CREATOR = new Creator<DateValidatorWeekAhead>() {
+            @Override
+            public DateValidatorWeekAhead createFromParcel(Parcel in) {
+                return new DateValidatorWeekAhead();
+            }
+
+            @Override
+            public DateValidatorWeekAhead[] newArray(int size) {
+                return new DateValidatorWeekAhead[size];
+            }
+        };
     }
 
     private void loadSlotsForStation(String stationId) {
@@ -345,6 +516,7 @@ public class OwnerBookingActivity extends AppCompatActivity {
             @Override
             protected void onPreExecute() {
                 Toast.makeText(OwnerBookingActivity.this, "Fetching slots...", Toast.LENGTH_SHORT).show();
+                showHint("Loading available slots...");
             }
 
             @Override
@@ -364,6 +536,7 @@ public class OwnerBookingActivity extends AppCompatActivity {
             protected void onPostExecute(ApiResponse res) {
                 if (res == null) {
                     toast("Failed to fetch slots");
+                    showHint("Failed to load slots. Please try again.");
                     return;
                 }
 
@@ -393,32 +566,25 @@ public class OwnerBookingActivity extends AppCompatActivity {
                     }
 
                     if (slotList.isEmpty()) {
-                        tvHints.setText("No slots found.");
+                        showHint("No slots found for selected date.");
                         return;
                     }
 
                     slots = slotList;
-                    ArrayAdapter<String> slotAdapter = new ArrayAdapter<>(
-                            OwnerBookingActivity.this,
-                            android.R.layout.simple_spinner_item,
-                            slots.stream().map(SlotItem::toString).toArray(String[]::new));
-                    slotAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+                    List<String> slotStrings = new ArrayList<>();
+                    for (SlotItem slot : slots) {
+                        slotStrings.add(slot.toString());
+                    }
+
+                    ArrayAdapter<String> slotAdapter = createEnhancedSpinnerAdapter(slotStrings);
+                    slotAdapter.setDropDownViewResource(R.layout.grid_spinner_dropdown_item);
                     spnSlot.setAdapter(slotAdapter);
 
-                    spnSlot.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                        @Override
-                        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                            selectedSlotId = slots.get(position).slotId;
-                            loadTimeslotsFor(stationId, selectedSlotId, selectedDateStr);
-                        }
-
-                        @Override
-                        public void onNothingSelected(AdapterView<?> parent) {
-                        }
-                    });
+                    showHint(slotList.size() + " slots available. Select a slot to continue.");
                 } catch (Exception e) {
                     Log.e("OwnerBooking", "Parse slots failed", e);
-                    tvHints.setText("Error parsing slot data.");
+                    showHint("Error parsing slot data.");
                 }
             }
         }.execute();
@@ -431,6 +597,7 @@ public class OwnerBookingActivity extends AppCompatActivity {
             @Override
             protected void onPreExecute() {
                 Toast.makeText(OwnerBookingActivity.this, "Fetching time slots...", Toast.LENGTH_SHORT).show();
+                showHint("Loading available time slots...");
             }
 
             @Override
@@ -449,11 +616,13 @@ public class OwnerBookingActivity extends AppCompatActivity {
             protected void onPostExecute(ApiResponse res) {
                 if (res == null) {
                     toast("Failed to fetch timeslots");
+                    showHint("Failed to load time slots. Please try again.");
                     return;
                 }
 
                 if (!res.isSuccess()) {
                     toast("No timeslots available");
+                    showHint("No time slots available for selected slot and date.");
                     return;
                 }
 
@@ -463,30 +632,26 @@ public class OwnerBookingActivity extends AppCompatActivity {
                     List<TimeSlotItem> fetched = gson.fromJson(res.getData(), t);
                     if (fetched == null || fetched.isEmpty()) {
                         toast("No available time slots for this date");
+                        showHint("No time slots available. Please select a different date or slot.");
                         return;
                     }
 
                     timeSlots = fetched;
-                    ArrayAdapter<String> tsAdapter = new ArrayAdapter<>(
-                            OwnerBookingActivity.this,
-                            android.R.layout.simple_spinner_item,
-                            timeSlots.stream().map(TimeSlotItem::toString).toArray(String[]::new));
-                    tsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+                    List<String> timeSlotStrings = new ArrayList<>();
+                    for (TimeSlotItem timeSlot : timeSlots) {
+                        timeSlotStrings.add(timeSlot.toString());
+                    }
+
+                    ArrayAdapter<String> tsAdapter = createEnhancedSpinnerAdapter(timeSlotStrings);
+                    tsAdapter.setDropDownViewResource(R.layout.grid_spinner_dropdown_item);
                     spnTimeSlot.setAdapter(tsAdapter);
 
-                    spnTimeSlot.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                        @Override
-                        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                            selectedTimeSlotId = timeSlots.get(position).timeSlotId;
-                        }
-
-                        @Override
-                        public void onNothingSelected(AdapterView<?> parent) {
-                        }
-                    });
+                    showHint(timeSlots.size() + " time slots available. Select your preferred time.");
                 } catch (Exception e) {
                     Log.e("OwnerBooking", "Failed to parse timeslots", e);
                     toast("Timeslot parse error");
+                    showHint("Error loading time slots. Please try again.");
                 }
             }
         }.execute();
@@ -504,6 +669,8 @@ public class OwnerBookingActivity extends AppCompatActivity {
                 @Override
                 protected void onPreExecute() {
                     Toast.makeText(OwnerBookingActivity.this, "Creating booking...", Toast.LENGTH_SHORT).show();
+                    btnConfirmBooking.setEnabled(false);
+                    btnConfirmBooking.setText("PROCESSING...");
                 }
 
                 @Override
@@ -518,6 +685,9 @@ public class OwnerBookingActivity extends AppCompatActivity {
 
                 @Override
                 protected void onPostExecute(ApiResponse res) {
+                    btnConfirmBooking.setEnabled(true);
+                    btnConfirmBooking.setText("CONFIRM BOOKING");
+
                     if (res == null) {
                         toast("Network error while creating booking");
                         return;
@@ -552,12 +722,14 @@ public class OwnerBookingActivity extends AppCompatActivity {
         slots.clear();
         spnSlot.setAdapter(null);
         selectedSlotId = null;
+        updateConfirmButtonState();
     }
 
     private void clearTimeSlots() {
         timeSlots.clear();
         spnTimeSlot.setAdapter(null);
         selectedTimeSlotId = null;
+        updateConfirmButtonState();
     }
 
     private void toast(String m) {

@@ -56,6 +56,73 @@ namespace EvBackend.Controllers
         }
 
         //get logged in user details
+        // [HttpGet("me")]
+        // [Authorize]
+        // public async Task<IActionResult> Me()
+        // {
+        //     try
+        //     {
+        //         var role = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value;
+        //         var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+
+        //         var nic = "";
+
+        //         if (role == "Owner")
+        //         {
+        //             nic = userId;
+        //             userId = "";
+        //         }
+
+        //         if (role == null)
+        //             return Unauthorized(new { message = "Invalid token" });
+
+        //         if (string.IsNullOrEmpty(userId) && string.IsNullOrEmpty(nic))
+        //             return Unauthorized(new { message = "Invalid token" });
+
+        //         // Check if EVOwner by NIC
+        //         if (!string.IsNullOrEmpty(nic) && role == "Owner")
+        //         {
+        //             var owner = await _evOwnerService.GetEVOwnerByNIC(nic);
+        //             if (owner != null)
+        //             {
+        //                 return Ok(new EVOwnerDto
+        //                 {
+        //                     NIC = owner.NIC,
+        //                     FullName = owner.FullName,
+        //                     Email = owner.Email,
+        //                     IsActive = owner.IsActive,
+        //                     CreatedAt = owner.CreatedAt
+        //                 });
+        //             }
+        //         }
+
+        //         // Otherwise, fallback to normal User
+        //         var user = await _userService.GetUserById(userId);
+        //         if (user != null)
+        //         {
+        //             return Ok(new UserDto
+        //             {
+        //                 Id = user.Id,
+        //                 FullName = user.FullName,
+        //                 Email = user.Email,
+        //                 Role = user.Role,
+        //                 IsActive = user.IsActive,
+        //                 CreatedAt = user.CreatedAt,
+
+        //                 StationName = user.StationName,
+        //                 StationLocation = user.StationLocation
+        //             });
+        //         }
+
+        //         return NotFound(new { message = "User not found" });
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError(ex, "An error occurred while fetching user details.");
+        //         return StatusCode(500, new { message = "An unexpected error occurred." });
+        //     }
+        // }
+
         [HttpGet("me")]
         [Authorize]
         public async Task<IActionResult> Me()
@@ -64,7 +131,6 @@ namespace EvBackend.Controllers
             {
                 var role = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value;
                 var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-
                 var nic = "";
 
                 if (role == "Owner")
@@ -79,38 +145,39 @@ namespace EvBackend.Controllers
                 if (string.IsNullOrEmpty(userId) && string.IsNullOrEmpty(nic))
                     return Unauthorized(new { message = "Invalid token" });
 
-                // Check if EVOwner by NIC
+                // ✅ Owner flow — now includes phone & reactivationRequested
                 if (!string.IsNullOrEmpty(nic) && role == "Owner")
                 {
                     var owner = await _evOwnerService.GetEVOwnerByNIC(nic);
                     if (owner != null)
                     {
-                        return Ok(new EVOwnerDto
+                        return Ok(new
                         {
-                            NIC = owner.NIC,
-                            FullName = owner.FullName,
-                            Email = owner.Email,
-                            IsActive = owner.IsActive,
-                            CreatedAt = owner.CreatedAt
+                            nic = owner.NIC,
+                            fullName = owner.FullName,
+                            email = owner.Email,
+                            phone = owner.Phone,                       // ✅ Added field
+                            isActive = owner.IsActive,
+                            reactivationRequested = owner.ReactivationRequested,  // ✅ Added field
+                            createdAt = owner.CreatedAt
                         });
                     }
                 }
 
-                // Otherwise, fallback to normal User
+                // ✅ Operator/Admin fallback (as before)
                 var user = await _userService.GetUserById(userId);
                 if (user != null)
                 {
-                    return Ok(new UserDto
+                    return Ok(new
                     {
-                        Id = user.Id,
-                        FullName = user.FullName,
-                        Email = user.Email,
-                        Role = user.Role,
-                        IsActive = user.IsActive,
-                        CreatedAt = user.CreatedAt,
-
-                        StationName = user.StationName,
-                        StationLocation = user.StationLocation
+                        id = user.Id,
+                        fullName = user.FullName,
+                        email = user.Email,
+                        role = user.Role,
+                        isActive = user.IsActive,
+                        createdAt = user.CreatedAt,
+                        stationName = user.StationName,
+                        stationLocation = user.StationLocation
                     });
                 }
 
@@ -122,7 +189,6 @@ namespace EvBackend.Controllers
                 return StatusCode(500, new { message = "An unexpected error occurred." });
             }
         }
-
         //logout
         [HttpPost("logout")]
         [Authorize]

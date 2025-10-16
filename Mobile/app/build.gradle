@@ -40,4 +40,5 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-process:2.8.4'
     implementation 'androidx.lifecycle:lifecycle-livedata:2.8.4'
     implementation 'androidx.lifecycle:lifecycle-runtime:2.8.4'
+
 }

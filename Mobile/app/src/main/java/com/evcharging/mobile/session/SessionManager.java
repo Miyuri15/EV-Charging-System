@@ -69,6 +69,7 @@ public class SessionManager {
                 Log.d("LOGIN_SUCCESS", "Station ID     : " + user.getStationId());
                 Log.d("LOGIN_SUCCESS", "Station Name   : " + user.getStationName());
                 Log.d("LOGIN_SUCCESS", "Station Loc.   : " + user.getStationLocation());
+                Log.d("LOGIN_SUCCESS", "Phone          : " + user.getPhone()); // ✅ Add phone logging
                 Log.d("LOGIN_SUCCESS", "----------------------------------------");
             }
 
@@ -78,7 +79,7 @@ public class SessionManager {
 
                 if (saved) {
                     Log.d(TAG, "User data saved to database successfully");
-                    Log.d(TAG, "User: " + user.getEmail() + " | Role: " + user.getRole());
+                    Log.d(TAG, "User: " + user.getEmail() + " | Role: " + user.getRole() + " | Phone: " + user.getPhone());
 
                     // Check if operator has station assigned
                     if (user.isOperator()) {

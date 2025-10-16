@@ -135,31 +135,87 @@ namespace EvBackend.Services
         }
 
         // Update owner details
+        // public async Task<EVOwnerDto> UpdateEVOwner(string nic, UpdateEVOwnerDto dto)
+        // {
+        //     dto.Email = dto.Email.Trim().ToLower();
+        //     var update = Builders<EVOwner>.Update
+        //         .Set(o => o.FullName, dto.FullName)
+        //         .Set(o => o.Email, dto.Email)
+        //         .Set(o => o.Phone, dto.Phone);
+        //     var result = await _owners.FindOneAndUpdateAsync(
+        //         o => o.NIC == nic,
+        //         update,
+        //         new FindOneAndUpdateOptions<EVOwner> { ReturnDocument = ReturnDocument.After });
+
+        //     if (result == null)
+        //         throw new KeyNotFoundException("EV Owner not found");
+
+        //     return new EVOwnerDto
+        //     {
+        //         NIC = result.NIC,
+        //         FullName = result.FullName,
+        //         Email = result.Email,
+        //         Phone = result.Phone,
+        //         IsActive = result.IsActive,
+        //         CreatedAt = result.CreatedAt
+        //     };
+        // }
         public async Task<EVOwnerDto> UpdateEVOwner(string nic, UpdateEVOwnerDto dto)
         {
-            dto.Email = dto.Email.Trim().ToLower();
-            var update = Builders<EVOwner>.Update
-                .Set(o => o.FullName, dto.FullName)
-                .Set(o => o.Email, dto.Email)
-                .Set(o => o.Phone, dto.Phone);
-            var result = await _owners.FindOneAndUpdateAsync(
+            // Fetch the current owner
+            var owner = await _owners.Find(o => o.NIC == nic).FirstOrDefaultAsync();
+            if (owner == null)
+                throw new KeyNotFoundException("EV Owner not found.");
+
+            // Prepare update builder dynamically (only update non-empty fields)
+            var updateBuilder = Builders<EVOwner>.Update;
+            var updates = new List<UpdateDefinition<EVOwner>>();
+
+            if (!string.IsNullOrWhiteSpace(dto.FullName))
+                updates.Add(updateBuilder.Set(o => o.FullName, dto.FullName));
+
+            if (!string.IsNullOrWhiteSpace(dto.Email))
+                updates.Add(updateBuilder.Set(o => o.Email, dto.Email.Trim().ToLower()));
+
+            if (!string.IsNullOrWhiteSpace(dto.Phone))
+                updates.Add(updateBuilder.Set(o => o.Phone, dto.Phone));
+
+            // Only apply if at least one field was changed
+            if (updates.Count == 0)
+                return new EVOwnerDto
+                {
+                    NIC = owner.NIC,
+                    FullName = owner.FullName,
+                    Email = owner.Email,
+                    Phone = owner.Phone,
+                    IsActive = owner.IsActive,
+                    ReactivationRequested = owner.ReactivationRequested,
+                    CreatedAt = owner.CreatedAt
+                };
+
+            var combinedUpdate = updateBuilder.Combine(updates);
+
+            // Execute Mongo update and return updated object
+            var updatedOwner = await _owners.FindOneAndUpdateAsync(
                 o => o.NIC == nic,
-                update,
+                combinedUpdate,
                 new FindOneAndUpdateOptions<EVOwner> { ReturnDocument = ReturnDocument.After });
 
-            if (result == null)
-                throw new KeyNotFoundException("EV Owner not found");
+            if (updatedOwner == null)
+                throw new KeyNotFoundException("EV Owner not found after update.");
 
             return new EVOwnerDto
             {
-                NIC = result.NIC,
-                FullName = result.FullName,
-                Email = result.Email,
-                Phone = result.Phone,
-                IsActive = result.IsActive,
-                CreatedAt = result.CreatedAt
+                NIC = updatedOwner.NIC,
+                FullName = updatedOwner.FullName,
+                Email = updatedOwner.Email,
+                Phone = updatedOwner.Phone,
+                IsActive = updatedOwner.IsActive,
+                ReactivationRequested = updatedOwner.ReactivationRequested,
+                CreatedAt = updatedOwner.CreatedAt
             };
         }
+
 
 
         // Request reactivation by owner

@@ -1,7 +1,15 @@
 <resources>
     <!-- Application theme -->
-    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
         <!-- Customize your theme colors -->
+        <item name="colorPrimary">@color/primary_color</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/secondary_color</item>
+        <item name="colorOnSecondary">@color/black</item>
+    </style>
+
+    <!-- NoActionBar theme for activities using Toolbar -->
+    <style name="AppTheme.NoActionBar" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/primary_color</item>
         <item name="colorOnPrimary">@color/white</item>
         <item name="colorSecondary">@color/secondary_color</item>
@@ -19,7 +27,8 @@
         <item name="android:textColor">@color/black</item>
     </style>
 
-    <style name="ModernTextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+    <!-- Update these to use MaterialComponents instead of Material3 for consistency -->
+    <style name="ModernTextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
         <item name="boxStrokeColor">@color/text_secondary_30</item>
         <item name="boxStrokeWidth">1dp</item>
         <item name="boxCornerRadiusBottomStart">12dp</item>
@@ -30,7 +39,7 @@
         <item name="startIconTint">@color/text_secondary</item>
     </style>
 
-    <style name="ModernPrimaryButton" parent="Widget.Material3.Button">
+    <style name="ModernPrimaryButton" parent="Widget.MaterialComponents.Button">
         <item name="backgroundTint">@color/primary_color</item>
         <item name="cornerRadius">16dp</item>
         <item name="android:textColor">@color/white</item>
@@ -43,7 +52,7 @@
         <item name="iconPadding">8dp</item>
     </style>
 
-    <style name="ModernSecondaryButton" parent="Widget.Material3.Button.OutlinedButton">
+    <style name="ModernSecondaryButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
         <item name="strokeColor">@color/text_secondary_30</item>
         <item name="strokeWidth">1dp</item>
         <item name="cornerRadius">16dp</item>
@@ -54,4 +63,68 @@
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">48dp</item>
     </style>
+
+    <style name="GridSpinnerStyle" parent="Widget.AppCompat.Spinner">
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:dropDownWidth">match_parent</item>
+        <item name="android:popupBackground">@color/white</item>
+        <item name="android:dropDownVerticalOffset">4dp</item>
+        <item name="android:dropDownHorizontalOffset">0dp</item>
+        <item name="android:background">@android:color/transparent</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- Add these styles to your existing styles.xml -->
+    <style name="ModernIconButton" parent="Widget.MaterialComponents.Button.Icon">
+        <item name="backgroundTint">@color/primary_light</item>
+        <item name="iconTint">@color/white</item>
+        <item name="cornerRadius">20dp</item>
+        <item name="iconPadding">0dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+    </style>
+
+    <!-- Add/update these styles in your styles.xml -->
+    <style name="FilterChip" parent="Widget.MaterialComponents.Chip.Choice">
+        <item name="chipMinTouchTargetSize">0dp</item>
+        <item name="chipStartPadding">8dp</item>
+        <item name="chipEndPadding">8dp</item>
+        <item name="android:textColor">@color/chip_text_selector</item>
+        <item name="cornerRadius">20dp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">normal</item>
+    </style>
+
+    <style name="ModernTextButton" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="android:textColor">@color/primary</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="cornerRadius">8dp</item>
+        <item name="iconTint">@color/primary</item>
+        <item name="iconSize">16dp</item>
+        <item name="iconPadding">4dp</item>
+        <item name="android:paddingStart">8dp</item>
+        <item name="android:paddingEnd">8dp</item>
+    </style>
+
+    <style name="FilterChipText">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/chip_text_selector</item>
+    </style>
+
+    <style name="ModernOutlinedButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="strokeColor">@color/primary</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="cornerRadius">12dp</item>
+        <item name="android:textColor">@color/primary</item>
+        <item name="android:textSize">13sp</item>
+        <item name="iconTint">@color/primary</item>
+        <item name="iconSize">16dp</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
 </resources>
