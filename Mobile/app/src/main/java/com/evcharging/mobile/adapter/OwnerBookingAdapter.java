@@ -19,9 +19,13 @@ import com.google.android.material.progressindicator.LinearProgressIndicator;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapter.BookingViewHolder> {
@@ -195,22 +199,33 @@ public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapte
                 tvStatus.setTextColor(textColor);
             }
         }
-        private String formatTimeDisplay(String startTime, String endTime) {
-            try {
-                if (startTime != null && endTime != null) {
-                    // Extract date and time parts for better display
-                    String startDate = extractDate(startTime);
-                    String startTimePart = extractTime(startTime);
-                    String endTimePart = extractTime(endTime);
 
-                    return startDate + " • " + startTimePart + " - " + endTimePart;
-                }
+        public String formatTimeDisplay(String startTimeUtc, String endTimeUtc) {
+            try {
+                // Parse UTC timestamps
+                SimpleDateFormat utcFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+                utcFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+                Date startDate = utcFormat.parse(startTimeUtc);
+                Date endDate = utcFormat.parse(endTimeUtc);
+
+                // Format for Sri Lanka timezone (UTC+5:30)
+                SimpleDateFormat dateFormatter = new SimpleDateFormat("MMM dd, yyyy");
+                SimpleDateFormat timeFormatter = new SimpleDateFormat("h:mm a");
+
+                TimeZone slTimeZone = TimeZone.getTimeZone("Asia/Colombo");
+                dateFormatter.setTimeZone(slTimeZone);
+                timeFormatter.setTimeZone(slTimeZone);
+
+                String date = dateFormatter.format(startDate);
+                String time = timeFormatter.format(startDate) + " - " + timeFormatter.format(endDate);
+
+                return date + " • " + time;
+
             } catch (Exception e) {
                 e.printStackTrace();
+                return "Date not specified • Time not specified";
             }
-
-            // Fallback
-            return "Date not specified • Time not specified";
         }
 
         private String extractDate(String dateTime) {
