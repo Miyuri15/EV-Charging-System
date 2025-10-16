@@ -137,5 +137,23 @@ namespace EvBackend.Services
 
             return result;
         }
+
+        public async Task<IEnumerable<TimeSlot>> GetAvailableTimeSlotsAsync(string stationId, string slotId, DateTime date)
+        {
+            var startOfDay = date.Date.ToUniversalTime();
+            var endOfDay = startOfDay.AddDays(1);
+
+            var filter = Builders<TimeSlot>.Filter.Eq(t => t.StationId, stationId)
+                        & Builders<TimeSlot>.Filter.Eq(t => t.SlotId, slotId)
+                        & Builders<TimeSlot>.Filter.Gte(t => t.StartTime, startOfDay)
+                        & Builders<TimeSlot>.Filter.Lt(t => t.StartTime, endOfDay)
+                        & Builders<TimeSlot>.Filter.Eq(t => t.Status, "Available");
+
+            var result = await _timeSlots.Find(filter)
+                                        .SortBy(t => t.StartTime)
+                                        .ToListAsync();
+
+            return result;
+        }
     }
 }

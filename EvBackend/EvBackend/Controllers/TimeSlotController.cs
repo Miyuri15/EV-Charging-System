@@ -68,5 +68,23 @@ namespace EvBackend.Controllers
             return Ok(results);
         }
 
+        [HttpGet("available")]
+        [Authorize]
+        public async Task<IActionResult> GetAvailableTimeSlots(
+            [FromQuery] string stationId,
+            [FromQuery] string slotId,
+            [FromQuery] DateTime date)
+        {
+            if (string.IsNullOrEmpty(stationId) || string.IsNullOrEmpty(slotId))
+                return BadRequest(new { message = "stationId and slotId are required" });
+
+            var results = await _scheduler.GetAvailableTimeSlotsAsync(stationId, slotId, date);
+            if (!results.Any())
+                return NotFound(new { message = "No available time slots found for the given date" });
+
+            return Ok(results);
+        }
+
+
     }
 }
