@@ -872,7 +872,6 @@ namespace EvBackend.Services
             if (pageSize < 1) pageSize = 10;
 
             var col = _db.GetCollection<Booking>("Bookings");
-
             var totalCount = await col.CountDocumentsAsync(b => b.Status == "Finalized" || b.Status == "Completed");
 
             var list = await col.Find(b => b.Status == "Finalized" || b.Status == "Completed")
@@ -881,23 +880,33 @@ namespace EvBackend.Services
                                 .Limit(pageSize)
                                 .ToListAsync();
 
-            var bookingDtos = list.Select(b => new BookingDto
+            var bookingDtos = new List<BookingDto>();
+
+            foreach (var b in list)
             {
-                BookingId = b.BookingId,
-                StationId = b.StationId,
-                SlotId = b.SlotId,
-                SlotNumber = b.SlotNumber,
-                TimeSlotId = b.TimeSlotId,
-                OwnerId = b.OwnerId,
-                Status = b.Status,
-                StartTime = b.StartTime,
-                EndTime = b.EndTime,
-                CreatedAt = b.CreatedAt,
-                UpdatedAt = b.UpdatedAt,
-                FormattedStartTime = FormatSriLankaTime(b.StartTime),
-                FormattedEndTime = FormatSriLankaTime(b.EndTime),
-                FormattedDate = FormatSriLankaDate(b.StartTime)
-            });
+                var stationDto = await _stationService.GetStationByIdAsync(b.StationId);
+                var ownerDto = await _evOwnerService.GetEVOwnerById(b.OwnerId);
+
+                bookingDtos.Add(new BookingDto
+                {
+                    BookingId = b.BookingId,
+                    StationId = b.StationId,
+                    SlotId = b.SlotId,
+                    SlotNumber = b.SlotNumber,
+                    TimeSlotId = b.TimeSlotId,
+                    OwnerId = b.OwnerId,
+                    Status = b.Status,
+                    StartTime = b.StartTime,
+                    EndTime = b.EndTime,
+                    CreatedAt = b.CreatedAt,
+                    UpdatedAt = b.UpdatedAt,
+                    FormattedStartTime = FormatSriLankaTime(b.StartTime),
+                    FormattedEndTime = FormatSriLankaTime(b.EndTime),
+                    FormattedDate = FormatSriLankaDate(b.StartTime),
+                    StationName = stationDto?.Name,
+                    OwnerName = ownerDto?.FullName
+                });
+            }
 
             return new PagedResultDto<BookingDto>
             {
@@ -908,6 +917,5 @@ namespace EvBackend.Services
                 PageSize = pageSize
             };
         }
-
     }
 }
