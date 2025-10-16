@@ -795,8 +795,8 @@ namespace EvBackend.Services
                 FormattedEndTime = FormatSriLankaTime(b.EndTime),
                 FormattedDate = FormatSriLankaDate(b.StartTime),
                 StationName = _stationService.GetStationByIdAsync(b.StationId).Result?.Name,
-                TimeSlotRange = _db.GetCollection<TimeSlot>("TimeSlots").Find(t => t.TimeSlotId == b.TimeSlotId).FirstOrDefault()?.StartTime.ToString("hh:mm tt") + " - " +
-                               _db.GetCollection<TimeSlot>("TimeSlots").Find(t => t.TimeSlotId == b.TimeSlotId).FirstOrDefault()?.EndTime.ToString("hh:mm tt")
+                TimeSlotRange = _db.GetCollection<TimeSlot>("TimeSlots").Find(t => t.TimeSlotId == b.TimeSlotId).FirstOrDefault()?.StartTime.ToLocalTime().ToString("hh:mm tt") + " - " +
+                               _db.GetCollection<TimeSlot>("TimeSlots").Find(t => t.TimeSlotId == b.TimeSlotId).FirstOrDefault()?.EndTime.ToLocalTime().ToString("hh:mm tt")
             });
         }
 
