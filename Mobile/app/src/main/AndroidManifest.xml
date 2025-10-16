@@ -18,7 +18,7 @@
     <application
         android:name=".MyApp"
         android:icon="@mipmap/ic_launcher"
-        android:label="EVApp"
+        android:label="EV Charging"
         android:theme="@style/AppTheme.NoActionBar"
         android:usesCleartextTraffic="true"
         tools:replace="android:label">
