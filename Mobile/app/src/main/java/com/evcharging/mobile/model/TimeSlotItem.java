@@ -32,6 +32,15 @@ public class TimeSlotItem {
         return getFormattedRange();
     }
 
+    public String getStartTime() {
+        return startTime;
+    }
+
+    public String getEndTime() {
+        return endTime;
+    }
+
+
     private String getFormattedRange() {
         String startFormatted = formatTime(startTime);
         String endFormatted = formatTime(endTime);

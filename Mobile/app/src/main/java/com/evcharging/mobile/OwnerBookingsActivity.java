@@ -11,6 +11,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -28,15 +29,19 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class OwnerBookingsActivity extends AppCompatActivity {
 
     private RecyclerView recyclerView;
     private SwipeRefreshLayout swipeRefreshLayout;
     private OwnerBookingAdapter adapter;
-    private List<BookingItem> bookings = new ArrayList<>();
+    private final List<BookingItem> bookings = new ArrayList<>();
     private List<BookingItem> filteredBookings = new ArrayList<>();
     private ApiClient apiClient;
     private SessionManager session;
@@ -44,6 +49,9 @@ public class OwnerBookingsActivity extends AppCompatActivity {
     private LinearLayout emptyStateLayout;
     private ChipGroup chipGroup;
     private String currentFilter = "All"; // Track current filter
+
+    // Request code for update booking
+    private static final int UPDATE_BOOKING_REQUEST = 1001;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,29 +76,122 @@ public class OwnerBookingsActivity extends AppCompatActivity {
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout);
         emptyStateLayout = findViewById(R.id.emptyStateLayout);
         chipGroup = findViewById(R.id.chipGroup);
-
-        Log.d("OwnerBookings", "recyclerView: " + (recyclerView != null));
-        Log.d("OwnerBookings", "swipeRefreshLayout: " + (swipeRefreshLayout != null));
-        Log.d("OwnerBookings", "emptyStateLayout: " + (emptyStateLayout != null));
-        Log.d("OwnerBookings", "chipGroup: " + (chipGroup != null));
-        Log.d("OwnerBookings", "session: " + (session != null));
-        Log.d("OwnerBookings", "apiClient: " + (apiClient != null));
     }
 
     private void setupRecyclerView() {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new OwnerBookingAdapter(filteredBookings, this::openDetails);
+        adapter = new OwnerBookingAdapter(filteredBookings, new OwnerBookingAdapter.OnBookingActionListener() {
+            @Override
+            public void onBookingClick(BookingItem booking) {
+                openDetails(booking);
+            }
+
+            @Override
+            public void onUpdateClick(BookingItem booking) {
+                updateBooking(booking);
+            }
+
+            @Override
+            public void onCancelClick(BookingItem booking) {
+                cancelBooking(booking);
+            }
+
+            @Override
+            public void onTimeRestrictionClick(BookingItem booking) {
+                showTimeRestrictionDialog(booking);
+            }
+        });
         recyclerView.setAdapter(adapter);
     }
 
+    private void updateBooking(BookingItem booking) {
+        // Navigate to update booking activity for result
+        Intent intent = new Intent(this, UpdateBookingActivity.class);
+        intent.putExtra("booking", gson.toJson(booking));
+        startActivityForResult(intent, UPDATE_BOOKING_REQUEST);
+    }
+
+    // Handle the result from UpdateBookingActivity
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == UPDATE_BOOKING_REQUEST && resultCode == RESULT_OK) {
+            // Refresh the bookings list to show updated data
+            fetchBookings();
+            Toast.makeText(this, "Booking updated successfully", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void cancelBooking(BookingItem booking) {
+        new AlertDialog.Builder(this)
+                .setTitle("Cancel Booking")
+                .setMessage("Are you sure you want to cancel this booking?")
+                .setPositiveButton("Yes, Cancel", (dialog, which) -> {
+                    performCancelBooking(booking);
+                })
+                .setNegativeButton("No", null)
+                .show();
+    }
+
+    private void performCancelBooking(BookingItem booking) {
+        new AsyncTask<Void, Void, ApiResponse>() {
+            @Override
+            protected void onPreExecute() {
+                Toast.makeText(OwnerBookingsActivity.this, "Cancelling booking...", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            protected ApiResponse doInBackground(Void... voids) {
+                try {
+                    return apiClient.cancelBooking(booking.getBookingId());
+                } catch (Exception e) {
+                    Log.e("CancelBooking", "Error cancelling booking", e);
+                    return null;
+                }
+            }
+
+            @Override
+            protected void onPostExecute(ApiResponse res) {
+                if (res == null || !res.isSuccess()) {
+                    String errorMsg = res != null ? res.getMessage() : "Network error";
+                    Toast.makeText(OwnerBookingsActivity.this, "Cancel failed: " + errorMsg, Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(OwnerBookingsActivity.this, "Booking cancelled successfully", Toast.LENGTH_SHORT).show();
+                    // Refresh the list
+                    fetchBookings();
+                }
+            }
+        }.execute();
+    }
+
+    private void showTimeRestrictionDialog(BookingItem booking) {
+        try {
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
+            Date startDate = format.parse(booking.getStartTime());
+            SimpleDateFormat displayFormat = new SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault());
+
+            String message = "You can only modify or cancel bookings at least 12 hours before the start time.\n\n" +
+                    "Your booking starts on: " + displayFormat.format(startDate) + "\n" +
+                    "Modification deadline has passed.";
+
+            new AlertDialog.Builder(this)
+                    .setTitle("Time Restriction")
+                    .setMessage(message)
+                    .setPositiveButton("OK", null)
+                    .show();
+        } catch (ParseException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Error parsing booking time", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void setupFilterChips() {
-        // Add null check to prevent crash
         if (chipGroup == null) {
             Log.w("OwnerBookings", "ChipGroup is null - filtering will be disabled");
             return;
         }
 
-        // Add individual click listeners for debugging
         Chip chipAll = findViewById(R.id.chipAll);
         Chip chipPending = findViewById(R.id.chipPending);
         Chip chipApproved = findViewById(R.id.chipApproved);
@@ -180,11 +281,6 @@ public class OwnerBookingsActivity extends AppCompatActivity {
                 }
             }
             Log.d("OwnerBookings", "Showing " + status + " bookings: " + filteredBookings.size());
-
-            // Debug: Log all booking statuses
-            for (BookingItem booking : bookings) {
-                Log.d("OwnerBookings", "Booking status: " + booking.getStatus() + ", Station: " + booking.getStationName());
-            }
         }
 
         adapter.notifyDataSetChanged();
@@ -202,6 +298,7 @@ public class OwnerBookingsActivity extends AppCompatActivity {
             hideEmptyState();
         }
     }
+
     private void showEmptyState(String title, String subtitle, int iconRes) {
         if (emptyStateLayout != null) {
             emptyStateLayout.setVisibility(View.VISIBLE);
@@ -224,7 +321,6 @@ public class OwnerBookingsActivity extends AppCompatActivity {
         }
     }
 
-
     // ---------------- Footer Navigation Setup ----------------
     private void setupFooterNavigation() {
         LinearLayout navHome = findViewById(R.id.navHome);
@@ -232,7 +328,7 @@ public class OwnerBookingsActivity extends AppCompatActivity {
         LinearLayout navProfile = findViewById(R.id.navProfile);
 
         if (navHome == null || navBookings == null || navProfile == null)
-            return; // Footer not included on this layout
+            return;
 
         navHome.setOnClickListener(v -> {
             Intent i = new Intent(this, OwnerHomeActivity.class);
@@ -240,11 +336,6 @@ public class OwnerBookingsActivity extends AppCompatActivity {
             startActivity(i);
         });
 
-//        navBookings.setOnClickListener(v -> {
-//            Intent i = new Intent(this, OwnerBookingsActivity.class);
-//            i.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-//            startActivity(i);
-//        });
         navBookings.setEnabled(false);
 
         navProfile.setOnClickListener(v -> {
@@ -297,7 +388,6 @@ public class OwnerBookingsActivity extends AppCompatActivity {
         }
     }
 
-    // ----------------------------------------------------------
     private void fetchBookings() {
         swipeRefreshLayout.setRefreshing(true);
 
@@ -305,7 +395,6 @@ public class OwnerBookingsActivity extends AppCompatActivity {
             @Override
             protected ApiResponse doInBackground(Void... voids) {
                 try {
-                    // Check if session is initialized
                     if (session == null) {
                         Log.e("OwnerBookings", "Session is null in doInBackground");
                         return null;

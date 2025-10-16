@@ -19,5 +19,10 @@
     <item name="chipApproved" type="id" />
     <item name="chipCharging" type="id" />
     <item name="statusBadge" type="id" />
+    <item name="btnUpdate" type="id" />
+    <item name="btnCancel" type="id" />
+    <item name="btnConfirmUpdate" type="id" />
+    <item name="btnCancelUpdate" type="id" />
+    <item name="tvCurrentBooking" type="id" />
 
 </resources>

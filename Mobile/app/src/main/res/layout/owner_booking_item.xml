@@ -106,6 +106,44 @@
                     android:letterSpacing="0.03"
                     android:layout_marginStart="6dp" />
             </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Enhanced Action Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="16dp"
+            android:gravity="center"
+            android:background="@color/chip_background_selected">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnUpdate"
+                style="@style/ModernPrimaryButton.Small"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="Update"
+                android:visibility="gone"
+                app:icon="@drawable/ic_edit"
+                app:iconSize="16dp"
+                app:iconPadding="4dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCancel"
+                style="@style/ModernSecondaryButton.Small"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="Cancel"
+                android:visibility="gone"
+                app:icon="@drawable/ic_close"
+                app:iconSize="16dp"
+                app:iconPadding="4dp" />
+
         </LinearLayout>
 
         <!-- Content Area -->
