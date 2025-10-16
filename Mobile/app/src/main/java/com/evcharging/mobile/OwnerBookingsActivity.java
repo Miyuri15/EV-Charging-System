@@ -240,11 +240,12 @@ public class OwnerBookingsActivity extends AppCompatActivity {
             startActivity(i);
         });
 
-        navBookings.setOnClickListener(v -> {
-            Intent i = new Intent(this, OwnerBookingsActivity.class);
-            i.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            startActivity(i);
-        });
+//        navBookings.setOnClickListener(v -> {
+//            Intent i = new Intent(this, OwnerBookingsActivity.class);
+//            i.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+//            startActivity(i);
+//        });
+        navBookings.setEnabled(false);
 
         navProfile.setOnClickListener(v -> {
             Intent i = new Intent(this, OwnerProfileActivity.class);

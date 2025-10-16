@@ -131,11 +131,12 @@ public class OwnerProfileActivity extends AppCompatActivity {
             startActivity(i);
         });
 
-        navProfile.setOnClickListener(v -> {
-            Intent i = new Intent(this, OwnerProfileActivity.class);
-            i.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            startActivity(i);
-        });
+//        navProfile.setOnClickListener(v -> {
+//            Intent i = new Intent(this, OwnerProfileActivity.class);
+//            i.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+//            startActivity(i);
+//        });
+        navProfile.setEnabled(false);
     }
 
     private void highlightActiveTab(String activeTab) {

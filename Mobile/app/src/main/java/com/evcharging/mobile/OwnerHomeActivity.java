@@ -148,11 +148,12 @@ public class OwnerHomeActivity extends AppCompatActivity
                 if (navHome == null || navBookings == null || navProfile == null)
                         return; // Footer not included on this layout
 
-                navHome.setOnClickListener(v -> {
-                        Intent i = new Intent(this, OwnerHomeActivity.class);
-                        i.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                        startActivity(i);
-                });
+//                navHome.setOnClickListener(v -> {
+//                        Intent i = new Intent(this, OwnerHomeActivity.class);
+//                        i.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+//                        startActivity(i);
+//                });
+                navHome.setEnabled(false);
 
                 navBookings.setOnClickListener(v -> {
                         Intent i = new Intent(this, OwnerBookingsActivity.class);
