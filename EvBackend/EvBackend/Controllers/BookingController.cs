@@ -32,7 +32,7 @@ namespace EvBackend.Controllers
 
         // GET: /api/bookings/stations/{stationId}/timeslots?date=YYYY-MM-DD
         [HttpGet("stations/{stationId}/timeslots")]
-        //[Authorize] // enable if needed
+        [Authorize]
         public async Task<IActionResult> GetAvailableTimeSlotsForStation(string stationId, [FromQuery] string date)
         {
             try
@@ -46,7 +46,7 @@ namespace EvBackend.Controllers
 
         // GET: /api/bookings/timeslots/{timeSlotId}/available-slots
         [HttpGet("timeslots/{timeSlotId}/available-slots")]
-        //[Authorize]
+        [Authorize]
         public async Task<IActionResult> GetAvailableSlotsForTimeSlot(string timeSlotId)
         {
             try
@@ -63,7 +63,7 @@ namespace EvBackend.Controllers
         // ---------------------------
 
         [HttpPost]
-        [Authorize(Roles = "Owner,Admin,Backoffice")]
+        [Authorize(Roles = "Owner,Admin")]
         public async Task<IActionResult> CreateBooking([FromBody] CreateBookingDto dto)
         {
             if (dto == null) return BadRequest(new { message = "Booking data required" });
@@ -85,7 +85,7 @@ namespace EvBackend.Controllers
         }
 
         [HttpPut("{bookingId}")]
-        [Authorize(Roles = "Owner,Admin,Backoffice")]
+        [Authorize(Roles = "Owner,Admin")]
         public async Task<IActionResult> UpdateBooking(string bookingId, [FromBody] UpdateBookingDto dto)
         {
             var requesterId = User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -104,7 +104,7 @@ namespace EvBackend.Controllers
         }
 
         [HttpPatch("{bookingId}/cancel")]
-        [Authorize(Roles = "Owner,Admin,Backoffice")]
+        [Authorize(Roles = "Owner,Admin")]
         public async Task<IActionResult> CancelBooking(string bookingId)
         {
             var requesterId = User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -140,7 +140,7 @@ namespace EvBackend.Controllers
         }
 
         [HttpGet("owner/{ownerId}")]
-        [Authorize(Roles = "Owner,Admin,Backoffice")]
+        [Authorize(Roles = "Owner,Admin")]
         public async Task<IActionResult> GetBookingsByOwner(string ownerId)
         {
             try
@@ -152,7 +152,7 @@ namespace EvBackend.Controllers
         }
 
         [HttpGet("station/{stationId}")]
-        [Authorize(Roles = "Admin,Backoffice,Operator")]
+        [Authorize(Roles = "Admin,Operator")]
         public async Task<IActionResult> GetBookingsByStation(string stationId)
         {
             try
@@ -164,7 +164,7 @@ namespace EvBackend.Controllers
         }
 
         [HttpGet("station/{stationId}/today")]
-        [Authorize(Roles = "Operator,Admin,Backoffice")]
+        [Authorize(Roles = "Operator,Admin")]
         public async Task<IActionResult> GetTodayBookingsByStation(string stationId)
         {
             try
@@ -176,7 +176,7 @@ namespace EvBackend.Controllers
         }
 
         [HttpGet("station/{stationId}/count")]
-        [Authorize(Roles = "Operator,Admin,Backoffice")]
+        [Authorize(Roles = "Operator,Admin")]
         public async Task<IActionResult> GetApprovedBookingCountByStation(string stationId)
         {
             try
@@ -193,7 +193,7 @@ namespace EvBackend.Controllers
         }
 
         [HttpGet("station/{stationId}/upcoming")]
-        [Authorize(Roles = "Operator,Admin,Backoffice")]
+        [Authorize(Roles = "Operator,Admin")]
         public async Task<IActionResult> GetUpcomingBookingsByStation(string stationId)
         {
             try
@@ -209,7 +209,7 @@ namespace EvBackend.Controllers
         // ---------------------------
 
         [HttpPatch("{bookingId}/approve")]
-        [Authorize(Roles = "Operator,Admin,Backoffice")]
+        [Authorize(Roles = "Operator,Admin")]
         public async Task<IActionResult> ApproveBooking(string bookingId)
         {
             var operatorId = User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -225,7 +225,7 @@ namespace EvBackend.Controllers
         }
 
         [HttpPatch("{bookingId}/start")]
-        [Authorize(Roles = "Operator,Admin,Backoffice")]
+        [Authorize(Roles = "Operator,Admin")]
         public async Task<IActionResult> StartCharging(string bookingId)
         {
             var operatorId = User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -241,7 +241,7 @@ namespace EvBackend.Controllers
         }
 
         [HttpPatch("{bookingId}/finalize")]
-        [Authorize(Roles = "Operator,Admin,Backoffice")]
+        [Authorize(Roles = "Operator,Admin")]
         public async Task<IActionResult> FinalizeBooking(string bookingId)
         {
             var operatorId = User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -276,7 +276,7 @@ namespace EvBackend.Controllers
         }
 
         [HttpGet("count/pending")]
-        //[Authorize(Roles = "Admin,Backoffice,Operator")]
+        [Authorize(Roles = "Admin,Operator")]
         public async Task<IActionResult> CountPendingBookings()
         {
             try
@@ -288,7 +288,7 @@ namespace EvBackend.Controllers
         }
 
         [HttpGet("count/approved")]
-        //[Authorize(Roles = "Admin,Backoffice,Operator")]
+        [Authorize(Roles = "Admin,Operator")]
         public async Task<IActionResult> CountApprovedFutureBookings()
         {
             try
@@ -301,7 +301,7 @@ namespace EvBackend.Controllers
 
 
         [HttpGet("overview")]
-        //[Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetReservationOverview([FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate)
         {
             try
