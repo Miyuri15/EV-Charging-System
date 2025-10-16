@@ -293,9 +293,13 @@ public class OwnerBookingDetailsActivity extends AppCompatActivity {
                 setupCancelledState();
                 break;
             case "finalized":
-            case "expired":
                 setupCompletedState();
                 break;
+
+            case "expired":
+                setupExpiredState();
+                break;
+
             default:
                 setupDefaultState();
         }
@@ -368,6 +372,18 @@ public class OwnerBookingDetailsActivity extends AppCompatActivity {
             animateSection(qrSection);
         }
     }
+
+    private void setupExpiredState() {
+        if (qrSection != null) {
+            qrSection.setVisibility(View.VISIBLE);
+            tvQrNote.setText("⏰ Your Booking has Expired!\nQR code is no longer active");
+            tvQrNote.setTextColor(getResources().getColor(R.color.text_secondary));
+            btnShareQr.setVisibility(View.GONE);
+            if (qrContainer != null) qrContainer.setVisibility(View.GONE);
+            animateSection(qrSection);
+        }
+    }
+
 
     private void setupDefaultState() {
         if (qrSection != null) {

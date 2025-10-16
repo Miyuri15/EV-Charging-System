@@ -9,7 +9,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.evcharging.mobile.R;
@@ -19,9 +18,6 @@ import com.google.android.material.progressindicator.LinearProgressIndicator;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -33,34 +29,27 @@ public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapte
     private List<BookingItem> bookings;
     private final OnBookingActionListener listener;
 
-    // Constructor for backward compatibility with OnBookingClickListener
-    public OwnerBookingAdapter(List<BookingItem> bookings, OnBookingClickListener listener) {
+    // Backward compatible constructor
+    public OwnerBookingAdapter(List<BookingItem> bookings, OnBookingClickListener legacyListener) {
         this.bookings = bookings;
-        // Create a wrapper that implements OnBookingActionListener but only handles onBookingClick
         this.listener = new OnBookingActionListener() {
             @Override
             public void onBookingClick(BookingItem booking) {
-                listener.onBookingClick(booking);
+                legacyListener.onBookingClick(booking);
             }
 
             @Override
-            public void onUpdateClick(BookingItem booking) {
-                // Do nothing for old listeners - actions won't be shown in ChargingHistoryActivity
-            }
+            public void onUpdateClick(BookingItem booking) { }
 
             @Override
-            public void onCancelClick(BookingItem booking) {
-                // Do nothing for old listeners - actions won't be shown in ChargingHistoryActivity
-            }
+            public void onCancelClick(BookingItem booking) { }
 
             @Override
-            public void onTimeRestrictionClick(BookingItem booking) {
-                // Do nothing for old listeners
-            }
+            public void onTimeRestrictionClick(BookingItem booking) { }
         };
     }
 
-    // Constructor for new functionality with OnBookingActionListener
+    // Modern constructor
     public OwnerBookingAdapter(List<BookingItem> bookings, OnBookingActionListener listener) {
         this.bookings = bookings;
         this.listener = listener;
@@ -82,22 +71,23 @@ public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapte
 
     @Override
     public int getItemCount() {
-        return bookings.size();
+        return bookings != null ? bookings.size() : 0;
     }
 
-    // Add this method to support ChargingHistoryActivity
     public void setData(List<BookingItem> newBookings) {
         this.bookings = newBookings;
         notifyDataSetChanged();
     }
 
-    // Keep the updateList method for backward compatibility
     public void updateList(List<BookingItem> newBookings) {
         this.bookings.clear();
         this.bookings.addAll(newBookings);
         notifyDataSetChanged();
     }
 
+    // ----------------------------------------------------
+    // ViewHolder
+    // ----------------------------------------------------
     public static class BookingViewHolder extends RecyclerView.ViewHolder {
 
         private final TextView tvStationName, tvStatus, tvDate, tvTime, tvSlotNumber, tvDuration, tvProgressPercent;
@@ -108,8 +98,6 @@ public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapte
 
         public BookingViewHolder(@NonNull View itemView) {
             super(itemView);
-
-            // Initialize all views from the new layout
             tvStationName = itemView.findViewById(R.id.tvStationName);
             tvStatus = itemView.findViewById(R.id.tvStatus);
             tvDate = itemView.findViewById(R.id.tvDate);
@@ -117,10 +105,7 @@ public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapte
             tvSlotNumber = itemView.findViewById(R.id.tvSlotNumber);
             tvDuration = itemView.findViewById(R.id.tvDuration);
             tvProgressPercent = itemView.findViewById(R.id.tvProgressPercent);
-
-            // FIX: Use the correct ID from your layout
-            statusBadge = itemView.findViewById(R.id.statusBadge); // This was the issue
-
+            statusBadge = itemView.findViewById(R.id.statusBadge);
             cardBooking = itemView.findViewById(R.id.cardBooking);
             chargingProgressLayout = itemView.findViewById(R.id.chargingProgressLayout);
             progressCharging = itemView.findViewById(R.id.progressCharging);
@@ -128,36 +113,19 @@ public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapte
         }
 
         public void bind(BookingItem booking, OnBookingActionListener listener) {
-
-            // Debug: Check the actual status value
-            Log.d("BookingDebug", "Booking status: '" + booking.getStatus() + "'");
-
-            // Set basic info
             tvStationName.setText(booking.getStationName());
             tvStatus.setText(booking.getStatus());
 
-            // Format and set time components separately
             String[] timeParts = formatTimeDisplay(booking.getStartTime(), booking.getEndTime()).split(" • ");
             if (timeParts.length >= 2) {
                 tvDate.setText(timeParts[0]);
                 tvTime.setText(timeParts[1]);
-            } else {
-                tvDate.setText("Date not specified");
-                tvTime.setText("Time not specified");
             }
 
-            // Format slot info
-            String slotText = formatSlotInfo(booking.getSlotNumber());
-            tvSlotNumber.setText(slotText);
-
-            // Calculate and set duration
-            String durationText = calculateDuration(booking.getStartTime(), booking.getEndTime());
-            tvDuration.setText(durationText);
-
-            // Set status style with dynamic background
+            tvSlotNumber.setText(formatSlotInfo(booking.getSlotNumber()));
+            tvDuration.setText(calculateDuration(booking.getStartTime(), booking.getEndTime()));
             setStatusStyle(booking.getStatus());
 
-            // Handle charging progress - show only for Charging status
             if ("Charging".equalsIgnoreCase(booking.getStatus())) {
                 chargingProgressLayout.setVisibility(View.VISIBLE);
                 int progress = calculateDefaultProgress(booking.getStartTime(), booking.getEndTime());
@@ -168,8 +136,6 @@ public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapte
             }
 
             setupActionButtons(booking, listener);
-
-            // Set click listeners
             btnViewDetails.setOnClickListener(v -> listener.onBookingClick(booking));
             cardBooking.setOnClickListener(v -> listener.onBookingClick(booking));
         }
@@ -177,250 +143,131 @@ public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapte
         private void setupActionButtons(BookingItem booking, OnBookingActionListener listener) {
             MaterialButton btnUpdate = itemView.findViewById(R.id.btnUpdate);
             MaterialButton btnCancel = itemView.findViewById(R.id.btnCancel);
+            if (btnUpdate == null || btnCancel == null) return;
 
-            if (btnUpdate == null || btnCancel == null) {
-                Log.e("BookingAdapter", "Action buttons not found in layout");
-                return;
-            }
-
-            // Reset visibility
             btnUpdate.setVisibility(View.GONE);
             btnCancel.setVisibility(View.GONE);
 
             String status = booking.getStatus();
-            String startTime = booking.getStartTime();
+            boolean canModify = canModifyBooking(booking.getStartTime());
 
-            // Check if within 12 hours
-            boolean canModify = canModifyBooking(startTime);
-
-            Log.d("BookingActions", "Status: " + status + ", CanModify: " + canModify + ", StartTime: " + startTime);
-
-            // Only show action buttons for active bookings (Pending/Approved)
             if ("Pending".equalsIgnoreCase(status) || "Approved".equalsIgnoreCase(status)) {
                 if ("Pending".equalsIgnoreCase(status)) {
-                    // Pending: Can update and cancel
                     if (canModify) {
                         btnUpdate.setVisibility(View.VISIBLE);
                         btnCancel.setVisibility(View.VISIBLE);
-
-                        btnUpdate.setOnClickListener(v -> {
-                            listener.onUpdateClick(booking);
-                        });
+                        btnUpdate.setOnClickListener(v -> listener.onUpdateClick(booking));
                     } else {
-                        btnCancel.setVisibility(View.VISIBLE); // Can still cancel but with time restriction message
+                        btnCancel.setVisibility(View.VISIBLE);
                         btnCancel.setAlpha(0.6f);
                     }
                 } else if ("Approved".equalsIgnoreCase(status)) {
-                    // Approved: Can only cancel
-                    if (canModify) {
-                        btnCancel.setVisibility(View.VISIBLE);
-                    } else {
-                        btnCancel.setVisibility(View.VISIBLE);
-                        btnCancel.setAlpha(0.6f);
-                    }
+                    btnCancel.setVisibility(View.VISIBLE);
+                    if (!canModify) btnCancel.setAlpha(0.6f);
                 }
 
-                // Set cancel button listener
                 btnCancel.setOnClickListener(v -> {
-                    if (canModify) {
-                        listener.onCancelClick(booking);
-                    } else {
-                        // Show time restriction message
-                        listener.onTimeRestrictionClick(booking);
-                    }
+                    if (canModify) listener.onCancelClick(booking);
+                    else listener.onTimeRestrictionClick(booking);
                 });
             }
-            // For Charging, Finalized, Cancelled, Expired status - no action buttons shown
         }
 
-        private boolean canModifyBooking(String startTime) {
+        private boolean canModifyBooking(String startTimeUtc) {
             try {
-                SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-                Date startDate = format.parse(startTime);
+                SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault());
+                format.setTimeZone(TimeZone.getTimeZone("UTC"));
+                Date startDate = format.parse(startTimeUtc);
                 Date now = new Date();
-
-                long timeDifference = startDate.getTime() - now.getTime();
-                long hoursDifference = timeDifference / (1000 * 60 * 60);
-
-                return hoursDifference >= 12;
-            } catch (ParseException e) {
-                e.printStackTrace();
+                long diffHours = (startDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+                return diffHours >= 12;
+            } catch (Exception e) {
                 return false;
             }
         }
 
         private void setStatusStyle(String status) {
-            if (statusBadge == null) {
-                Log.e("StatusDebug", "statusBadge is NULL!");
-                return;
-            }
-
-            // Clear any previous background first
-            statusBadge.setBackground(null);
-
-            int textColor = android.graphics.Color.WHITE;
-            String statusLower = status.toLowerCase();
-
-            Log.d("StatusDebug", "Setting status: " + status + " (lower: " + statusLower + ")");
-
-            int backgroundResId;
-            switch (statusLower) {
-                case "pending":
-                    backgroundResId = R.drawable.bg_status_pending;
-                    Log.d("StatusDebug", "Using PENDING background: " + backgroundResId);
-                    break;
-                case "approved":
-                    backgroundResId = R.drawable.bg_status_approved;
-                    Log.d("StatusDebug", "Using APPROVED background: " + backgroundResId);
-                    break;
-                case "charging":
-                    backgroundResId = R.drawable.bg_status_charging;
-                    Log.d("StatusDebug", "Using CHARGING background: " + backgroundResId);
-                    break;
-                case "finalized":
-                    backgroundResId = R.drawable.bg_status_finalized;
-                    Log.d("StatusDebug", "Using FINALIZED background: " + backgroundResId);
-                    break;
+            int backgroundRes;
+            switch (status.toLowerCase()) {
+                case "pending": backgroundRes = R.drawable.bg_status_pending; break;
+                case "approved": backgroundRes = R.drawable.bg_status_approved; break;
+                case "charging": backgroundRes = R.drawable.bg_status_charging; break;
+                case "finalized": backgroundRes = R.drawable.bg_status_finalized; break;
                 case "cancelled":
-                case "expired":
-                    backgroundResId = R.drawable.bg_status_cancelled;
-                    Log.d("StatusDebug", "Using CANCELLED background: " + backgroundResId);
-                    break;
-                default:
-                    backgroundResId = R.drawable.bg_status_default;
-                    Log.d("StatusDebug", "Using DEFAULT background: " + backgroundResId);
-                    break;
+                case "expired": backgroundRes = R.drawable.bg_status_cancelled; break;
+                default: backgroundRes = R.drawable.bg_status_default; break;
             }
-
-            try {
-                statusBadge.setBackgroundResource(backgroundResId);
-                Log.d("StatusDebug", "Background set successfully for: " + status);
-            } catch (Resources.NotFoundException e) {
-                Log.e("StatusDebug", "Background resource not found: " + backgroundResId + " for status: " + status);
-                // Fallback to default
-                statusBadge.setBackgroundResource(R.drawable.bg_status_default);
-            }
-
-            if (tvStatus != null) {
-                tvStatus.setTextColor(textColor);
-            }
+            statusBadge.setBackgroundResource(backgroundRes);
+            tvStatus.setTextColor(android.graphics.Color.WHITE);
         }
 
-        private String formatTimeDisplay(String startTime, String endTime) {
-        public String formatTimeDisplay(String startTimeUtc, String endTimeUtc) {
+        // ----------------------------------------------------
+        // Time Handling (UTC → Local)
+        // ----------------------------------------------------
+        private String formatTimeDisplay(String startTimeUtc, String endTimeUtc) {
             try {
-                // Parse UTC timestamps
-                SimpleDateFormat utcFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+                SimpleDateFormat utcFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault());
                 utcFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
 
                 Date startDate = utcFormat.parse(startTimeUtc);
                 Date endDate = utcFormat.parse(endTimeUtc);
 
-                // Format for Sri Lanka timezone (UTC+5:30)
-                SimpleDateFormat dateFormatter = new SimpleDateFormat("MMM dd, yyyy");
-                SimpleDateFormat timeFormatter = new SimpleDateFormat("h:mm a");
+                SimpleDateFormat dateFmt = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
+                SimpleDateFormat timeFmt = new SimpleDateFormat("h:mm a", Locale.getDefault());
 
-                TimeZone slTimeZone = TimeZone.getTimeZone("Asia/Colombo");
-                dateFormatter.setTimeZone(slTimeZone);
-                timeFormatter.setTimeZone(slTimeZone);
+                TimeZone colombo = TimeZone.getTimeZone("Asia/Colombo");
+                dateFmt.setTimeZone(colombo);
+                timeFmt.setTimeZone(colombo);
 
-                String date = dateFormatter.format(startDate);
-                String time = timeFormatter.format(startDate) + " - " + timeFormatter.format(endDate);
-
-                return date + " • " + time;
-
+                return dateFmt.format(startDate) + " • " + timeFmt.format(startDate) + " - " + timeFmt.format(endDate);
             } catch (Exception e) {
-                e.printStackTrace();
                 return "Date not specified • Time not specified";
             }
         }
 
-        private String extractDate(String dateTime) {
-            try {
-                SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-                SimpleDateFormat outputFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
-                Date date = inputFormat.parse(dateTime);
-                return outputFormat.format(date);
-            } catch (ParseException e) {
-                if (dateTime.contains("T")) {
-                    return dateTime.split("T")[0]; // Return just the date part
-                }
-                return "Invalid Date";
-            }
-        }
-
-        private String extractTime(String dateTime) {
-            try {
-                SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-                SimpleDateFormat outputFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
-                Date date = inputFormat.parse(dateTime);
-                return outputFormat.format(date);
-            } catch (ParseException e) {
-                if (dateTime.contains("T")) {
-                    String timePart = dateTime.split("T")[1];
-                    if (timePart.length() >= 5) {
-                        return timePart.substring(0, 5); // Return HH:mm
-                    }
-                }
-                return "Invalid Time";
-            }
-        }
-
         private String formatSlotInfo(String slotNumber) {
-            if (slotNumber != null && !slotNumber.isEmpty()) {
-                return "Slot #" + slotNumber;
-            }
-            return "Slot info not available";
+            return (slotNumber != null && !slotNumber.isEmpty())
+                    ? "Slot #" + slotNumber
+                    : "Slot info not available";
         }
 
-        private String calculateDuration(String startTime, String endTime) {
+        private String calculateDuration(String startTimeUtc, String endTimeUtc) {
             try {
-                if (startTime != null && endTime != null) {
-                    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-                    Date start = format.parse(startTime);
-                    Date end = format.parse(endTime);
-
-                    if (start != null && end != null) {
-                        long diffInMillis = end.getTime() - start.getTime();
-                        long hours = TimeUnit.MILLISECONDS.toHours(diffInMillis);
-                        long minutes = TimeUnit.MILLISECONDS.toMinutes(diffInMillis) % 60;
-
-                        if (hours > 0) {
-                            return hours + " hour" + (hours > 1 ? "s" : "") +
-                                    (minutes > 0 ? " " + minutes + " min" : "");
-                        } else {
-                            return minutes + " minutes";
-                        }
-                    }
-                }
-            } catch (ParseException e) {
-                e.printStackTrace();
+                SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault());
+                fmt.setTimeZone(TimeZone.getTimeZone("UTC"));
+                Date start = fmt.parse(startTimeUtc);
+                Date end = fmt.parse(endTimeUtc);
+                long diffMs = end.getTime() - start.getTime();
+                long hours = TimeUnit.MILLISECONDS.toHours(diffMs);
+                long mins = TimeUnit.MILLISECONDS.toMinutes(diffMs) % 60;
+                return (hours > 0 ? hours + "h " : "") + mins + "m";
+            } catch (Exception e) {
+                return "Duration not available";
             }
-            return "Duration not available";
         }
 
-        private int calculateDefaultProgress(String startTime, String endTime) {
+        private int calculateDefaultProgress(String startTimeUtc, String endTimeUtc) {
             try {
-                if (startTime != null && endTime != null) {
-                    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-                    Date start = format.parse(startTime);
-                    Date end = format.parse(endTime);
-                    Date now = new Date();
-
-                    if (start != null && end != null && now.after(start) && now.before(end)) {
-                        long totalDuration = end.getTime() - start.getTime();
-                        long elapsed = now.getTime() - start.getTime();
-                        return (int) ((elapsed * 100) / totalDuration);
-                    }
+                SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault());
+                fmt.setTimeZone(TimeZone.getTimeZone("UTC"));
+                Date start = fmt.parse(startTimeUtc);
+                Date end = fmt.parse(endTimeUtc);
+                Date now = new Date();
+                if (now.after(start) && now.before(end)) {
+                    long total = end.getTime() - start.getTime();
+                    long elapsed = now.getTime() - start.getTime();
+                    return (int) ((elapsed * 100) / total);
                 }
-            } catch (ParseException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
-            return 65; // Default progress
+            return 65;
         }
     }
 
-    // New interface with all action callbacks
+    // ----------------------------------------------------
+    // Interfaces
+    // ----------------------------------------------------
     public interface OnBookingActionListener {
         void onBookingClick(BookingItem booking);
         void onUpdateClick(BookingItem booking);
@@ -428,7 +275,6 @@ public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapte
         void onTimeRestrictionClick(BookingItem booking);
     }
 
-    // Original interface for backward compatibility
     public interface OnBookingClickListener {
         void onBookingClick(BookingItem booking);
     }

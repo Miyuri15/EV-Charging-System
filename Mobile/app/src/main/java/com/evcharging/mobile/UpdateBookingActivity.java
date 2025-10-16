@@ -92,27 +92,33 @@ public class UpdateBookingActivity extends AppCompatActivity {
         tvStationInfo.setText("Station: " + currentBooking.getStationName());
 
         try {
-            SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
+            // Parse API times in UTC and convert to local
+            SimpleDateFormat utcFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault());
+            utcFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+
             SimpleDateFormat displayFormat = new SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault());
+            displayFormat.setTimeZone(TimeZone.getTimeZone("Asia/Colombo"));
 
-            Date startDate = inputFormat.parse(currentBooking.getStartTime());
-            Date endDate = inputFormat.parse(currentBooking.getEndTime());
+            Date startDate = utcFormat.parse(currentBooking.getStartTime());
+            Date endDate = utcFormat.parse(currentBooking.getEndTime());
 
-            String currentBookingInfo = String.format("Current: %s - %s (Slot %s)",
+            String currentBookingInfo = String.format(
+                    "Current: %s - %s (Slot %s)",
                     displayFormat.format(startDate),
                     displayFormat.format(endDate),
-                    currentBooking.getSlotNumber());
+                    currentBooking.getSlotNumber()
+            );
 
             tvCurrentBooking.setText(currentBookingInfo);
 
-            // Extract date for time slot loading
+            // Extract date (local date)
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+            dateFormat.setTimeZone(TimeZone.getTimeZone("Asia/Colombo"));
             selectedDateStr = dateFormat.format(startDate);
 
         } catch (Exception e) {
             e.printStackTrace();
             tvCurrentBooking.setText("Current booking info not available");
-            // Fallback to today's date
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
             selectedDateStr = dateFormat.format(new Date());
         }
@@ -339,19 +345,25 @@ public class UpdateBookingActivity extends AppCompatActivity {
         }.execute();
     }
 
-    private String formatTimeForDisplay(String startTime, String endTime) {
+    private String formatTimeForDisplay(String startTimeUtc, String endTimeUtc) {
         try {
-            SimpleDateFormat apiFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault());
-            SimpleDateFormat displayFormat = new SimpleDateFormat("hh:mm a", Locale.getDefault());
+            // Input: UTC time from API
+            SimpleDateFormat utcFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault());
+            utcFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
 
-            Date start = apiFormat.parse(startTime);
-            Date end = apiFormat.parse(endTime);
+            // Output: Local display format
+            SimpleDateFormat localFormat = new SimpleDateFormat("hh:mm a", Locale.getDefault());
+            localFormat.setTimeZone(TimeZone.getTimeZone("Asia/Colombo"));
 
-            return displayFormat.format(start) + " - " + displayFormat.format(end);
+            Date start = utcFormat.parse(startTimeUtc);
+            Date end = utcFormat.parse(endTimeUtc);
+
+            return localFormat.format(start) + " - " + localFormat.format(end);
         } catch (Exception e) {
-            return startTime + " - " + endTime;
+            return startTimeUtc + " - " + endTimeUtc;
         }
     }
+
 
     private void clearTimeSlots() {
         timeSlots.clear();

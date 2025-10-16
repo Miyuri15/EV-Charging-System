@@ -35,12 +35,83 @@
             android:layout_marginStart="10dp" />
     </LinearLayout>
 
+    <!-- 🔹 STATUS FILTER CHIPS -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/filterCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/headerLayout"
+        android:layout_margin="16dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="2dp"
+        app:cardBackgroundColor="@color/white">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Filter by Status"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginStart="8dp"
+                android:layout_marginBottom="8dp" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupHistory"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:singleSelection="true"
+                app:selectionRequired="true"
+                app:chipSpacingHorizontal="8dp"
+                app:chipSpacingVertical="4dp">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipAll"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    style="@style/FilterChip"
+                    android:text="All"
+                    app:chipBackgroundColor="@color/chip_background_selector" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipFinalized"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    style="@style/FilterChip"
+                    android:text="Finalized"
+                    app:chipBackgroundColor="@color/chip_background_selector" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipCancelled"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    style="@style/FilterChip"
+                    android:text="Cancelled"
+                    app:chipBackgroundColor="@color/chip_background_selector" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipExpired"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    style="@style/FilterChip"
+                    android:text="Expired"
+                    app:chipBackgroundColor="@color/chip_background_selector" />
+            </com.google.android.material.chip.ChipGroup>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
     <!-- 🔹 CONTENT AREA -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/headerLayout"
+        android:layout_below="@id/filterCard"
         android:background="#F5F7FA">
 
         <LinearLayout
