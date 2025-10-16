@@ -31,7 +31,8 @@ public class ChargingHistoryActivity extends AppCompatActivity {
 
     private SwipeRefreshLayout swipeRefreshLayout;
     private RecyclerView recyclerViewHistory;
-    private TextView tvEmpty;
+    private LinearLayout emptyStateLayout;
+
 
     private SessionManager session;
     private ApiClient apiClient;
@@ -54,7 +55,8 @@ public class ChargingHistoryActivity extends AppCompatActivity {
         }
         swipeRefreshLayout = findViewById(R.id.swipe);
         recyclerViewHistory = findViewById(R.id.rvHistory);
-        tvEmpty = findViewById(R.id.tvEmpty);
+        emptyStateLayout = findViewById(R.id.emptyStateLayout);
+
 
         // Setup Adapter + RecyclerView
         adapter = new OwnerBookingAdapter(new ArrayList<>(), item -> {
@@ -214,13 +216,40 @@ public class ChargingHistoryActivity extends AppCompatActivity {
                 swipeRefreshLayout.setRefreshing(false);
 
                 if (data == null || data.isEmpty()) {
-                    tvEmpty.setVisibility(View.VISIBLE);
+                    showEmptyState(
+                            "No Charging History Found",
+                            "You haven't completed or cancelled any bookings yet.",
+                            R.drawable.ic_history // use a relevant icon, or keep ic_ev_station
+                    );
                     adapter.setData(new ArrayList<>());
                 } else {
-                    tvEmpty.setVisibility(View.GONE);
+                    hideEmptyState();
                     adapter.setData(data);
                 }
+
             }
+            private void showEmptyState(String title, String subtitle, int iconRes) {
+                if (emptyStateLayout != null) {
+                    emptyStateLayout.setVisibility(View.VISIBLE);
+                    recyclerViewHistory.setVisibility(View.GONE);
+
+                    TextView tvTitle = emptyStateLayout.findViewById(R.id.tvEmptyTitle);
+                    TextView tvSubtitle = emptyStateLayout.findViewById(R.id.tvEmptySubtitle);
+                    ImageView ivIcon = emptyStateLayout.findViewById(R.id.ivEmptyIcon);
+
+                    if (tvTitle != null) tvTitle.setText(title);
+                    if (tvSubtitle != null) tvSubtitle.setText(subtitle);
+                    if (ivIcon != null && iconRes != 0) ivIcon.setImageResource(iconRes);
+                }
+            }
+
+            private void hideEmptyState() {
+                if (emptyStateLayout != null) {
+                    emptyStateLayout.setVisibility(View.GONE);
+                    recyclerViewHistory.setVisibility(View.VISIBLE);
+                }
+            }
+
         }.execute();
     }
 }

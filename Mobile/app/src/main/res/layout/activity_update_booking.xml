@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:background="@color/background_light">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Header Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@color/white"
+            android:layout_marginBottom="24dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:id="@+id/tvStationInfo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Station: Borella EV Hub"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/tvCurrentBooking"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Current: Oct 18, 2025 at 11:30 am - Oct 18, 2025 at 01:30 pm (Slot 2)"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_secondary"
+                    android:lineSpacingExtra="4dp" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Selection Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@color/white"
+            android:layout_marginBottom="24dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <!-- Slot Selection -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Select New Slot"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:layout_marginBottom="12dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="12dp"
+                    app:cardBackgroundColor="@color/card_blue"
+                    app:strokeColor="@color/gray_light"
+                    app:strokeWidth="1dp"
+                    android:layout_marginBottom="20dp">
+
+                    <Spinner
+                        android:id="@+id/spnSlot"
+                        style="@style/GridSpinnerStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:background="@android:color/transparent"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp" />
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Time Slot Selection -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Select New Time Slot"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:layout_marginBottom="12dp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="12dp"
+                    app:cardBackgroundColor="@color/card_blue"
+                    app:strokeColor="@color/gray_light"
+                    app:strokeWidth="1dp"
+                    android:layout_marginBottom="16dp">
+
+                    <Spinner
+                        android:id="@+id/spnTimeSlot"
+                        style="@style/GridSpinnerStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:background="@android:color/transparent"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp" />
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Selected Time Display -->
+                <LinearLayout
+                    android:id="@+id/selectedTimeLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@color/primary_light"
+                    android:padding="16dp"
+                    android:visibility="gone"
+                    app:cardCornerRadius="12dp">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_time"
+                        app:tint="@color/white"
+                        android:contentDescription="Selected Time" />
+
+                    <TextView
+                        android:id="@+id/tvSelectedTime"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Selected: 14:30 - 16:30"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:layout_marginStart="12dp" />
+
+                </LinearLayout>
+
+                <!-- Hints Section -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@color/light_green"
+                    android:padding="12dp"
+                    app:cardCornerRadius="8dp"
+                    android:layout_marginTop="8dp">
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:src="@drawable/ic_info"
+                        app:tint="@color/primary_color"
+                        android:layout_marginEnd="8dp" />
+
+                    <TextView
+                        android:id="@+id/tvHints"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Select both slot and time slot to update booking"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:lineSpacingExtra="2dp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Action Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCancelUpdate"
+                style="@style/ModernSecondaryButton"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="Cancel"
+                app:icon="@drawable/ic_close"
+                app:iconSize="20dp"
+                app:iconPadding="4dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnConfirmUpdate"
+                style="@style/ModernPrimaryButton"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="Update Booking"
+                app:icon="@drawable/ic_check"
+                app:iconSize="20dp"
+                app:iconPadding="4dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>

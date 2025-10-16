@@ -78,7 +78,6 @@ public class OwnerBookingDetailsActivity extends AppCompatActivity {
         // Set up back button click listener
         btnBack.setOnClickListener(v -> finish());
 
-
         // --- Handle both JSON and individual extras ---
         String bookingJson = getIntent().getStringExtra("booking");
         if (bookingJson != null) {
@@ -133,11 +132,9 @@ public class OwnerBookingDetailsActivity extends AppCompatActivity {
     }
 
     private void initializeEnhancedViews() {
-        // New enhanced views - FIXED: Correct casting
+        // New enhanced views
         qrSection = findViewById(R.id.qrSection);
         cancelReasonSection = findViewById(R.id.cancelReasonSection);
-//        cardTimeline = findViewById(R.id.cardTimeline); // This is a CardView
-//        timelineContainer = findViewById(R.id.timelineContainer); // This is a LinearLayout
         ivStatusIndicator = findViewById(R.id.ivStatusIndicator);
         cardHeader = findViewById(R.id.cardHeader);
     }
@@ -355,7 +352,7 @@ public class OwnerBookingDetailsActivity extends AppCompatActivity {
             if (reason != null && !reason.isEmpty()) {
                 tvReason.setText("Reason: " + reason);
             } else {
-                tvReason.setText("Reason: Slot is under Maintenance");
+                tvReason.setText("Reason: You have cancelled the reservation!");
             }
             animateSection(cancelReasonSection);
         }
@@ -403,7 +400,7 @@ public class OwnerBookingDetailsActivity extends AppCompatActivity {
         LinearLayout navProfile = findViewById(R.id.navProfile);
 
         if (navHome == null || navBookings == null || navProfile == null)
-            return; // Footer not included on this layout
+            return;
 
         navHome.setOnClickListener(v -> {
             Intent i = new Intent(this, OwnerHomeActivity.class);
@@ -466,11 +463,11 @@ public class OwnerBookingDetailsActivity extends AppCompatActivity {
                 break;
         }
     }
-    // ----------------------------------------------------------
 
     @Override
     protected void onResume() {
         super.onResume();
+        // Always refresh booking details when returning to this activity
         refreshBookingDetails();
     }
 
@@ -537,6 +534,16 @@ public class OwnerBookingDetailsActivity extends AppCompatActivity {
                     updateStatusUI(newStatus);
                     handleQrDisplay(newStatus);
 
+                    // Update booking details with fresh data
+                    currentBooking.setStatus(newStatus);
+                    currentBooking.setStationName(obj.optString("stationName", currentBooking.getStationName()));
+                    currentBooking.setSlotNumber(obj.optString("slotNumber", currentBooking.getSlotNumber()));
+                    currentBooking.setStartTime(obj.optString("startTime", currentBooking.getStartTime()));
+                    currentBooking.setEndTime(obj.optString("endTime", currentBooking.getEndTime()));
+
+                    // Update UI with fresh data
+                    displayBookingData();
+
                     // Update QR code if available
                     String newQrBase64 = obj.optString("qrImageBase64", null);
                     if (newQrBase64 != null && !newQrBase64.isEmpty()) {
@@ -562,13 +569,12 @@ public class OwnerBookingDetailsActivity extends AppCompatActivity {
         } catch (Exception e) {
             e.printStackTrace();
             // Show placeholder if QR rendering fails
-            ivQr.setImageResource(android.R.drawable.ic_menu_gallery); // Use system gallery icon as placeholder
+            ivQr.setImageResource(android.R.drawable.ic_menu_gallery);
         }
     }
 
     private void shareQr() {
         if (qrBitmap == null) {
-            // Show message if no QR available
             android.widget.Toast.makeText(this, "QR code not available for sharing", android.widget.Toast.LENGTH_SHORT).show();
             return;
         }

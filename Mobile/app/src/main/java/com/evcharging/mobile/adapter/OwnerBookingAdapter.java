@@ -31,9 +31,37 @@ import java.util.concurrent.TimeUnit;
 public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapter.BookingViewHolder> {
 
     private List<BookingItem> bookings;
-    private final OnBookingClickListener listener;
+    private final OnBookingActionListener listener;
 
+    // Constructor for backward compatibility with OnBookingClickListener
     public OwnerBookingAdapter(List<BookingItem> bookings, OnBookingClickListener listener) {
+        this.bookings = bookings;
+        // Create a wrapper that implements OnBookingActionListener but only handles onBookingClick
+        this.listener = new OnBookingActionListener() {
+            @Override
+            public void onBookingClick(BookingItem booking) {
+                listener.onBookingClick(booking);
+            }
+
+            @Override
+            public void onUpdateClick(BookingItem booking) {
+                // Do nothing for old listeners - actions won't be shown in ChargingHistoryActivity
+            }
+
+            @Override
+            public void onCancelClick(BookingItem booking) {
+                // Do nothing for old listeners - actions won't be shown in ChargingHistoryActivity
+            }
+
+            @Override
+            public void onTimeRestrictionClick(BookingItem booking) {
+                // Do nothing for old listeners
+            }
+        };
+    }
+
+    // Constructor for new functionality with OnBookingActionListener
+    public OwnerBookingAdapter(List<BookingItem> bookings, OnBookingActionListener listener) {
         this.bookings = bookings;
         this.listener = listener;
     }
@@ -98,7 +126,8 @@ public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapte
             progressCharging = itemView.findViewById(R.id.progressCharging);
             btnViewDetails = itemView.findViewById(R.id.btnViewDetails);
         }
-        public void bind(BookingItem booking, OnBookingClickListener listener) {
+
+        public void bind(BookingItem booking, OnBookingActionListener listener) {
 
             // Debug: Check the actual status value
             Log.d("BookingDebug", "Booking status: '" + booking.getStatus() + "'");
@@ -138,9 +167,86 @@ public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapte
                 chargingProgressLayout.setVisibility(View.GONE);
             }
 
+            setupActionButtons(booking, listener);
+
             // Set click listeners
             btnViewDetails.setOnClickListener(v -> listener.onBookingClick(booking));
             cardBooking.setOnClickListener(v -> listener.onBookingClick(booking));
+        }
+
+        private void setupActionButtons(BookingItem booking, OnBookingActionListener listener) {
+            MaterialButton btnUpdate = itemView.findViewById(R.id.btnUpdate);
+            MaterialButton btnCancel = itemView.findViewById(R.id.btnCancel);
+
+            if (btnUpdate == null || btnCancel == null) {
+                Log.e("BookingAdapter", "Action buttons not found in layout");
+                return;
+            }
+
+            // Reset visibility
+            btnUpdate.setVisibility(View.GONE);
+            btnCancel.setVisibility(View.GONE);
+
+            String status = booking.getStatus();
+            String startTime = booking.getStartTime();
+
+            // Check if within 12 hours
+            boolean canModify = canModifyBooking(startTime);
+
+            Log.d("BookingActions", "Status: " + status + ", CanModify: " + canModify + ", StartTime: " + startTime);
+
+            // Only show action buttons for active bookings (Pending/Approved)
+            if ("Pending".equalsIgnoreCase(status) || "Approved".equalsIgnoreCase(status)) {
+                if ("Pending".equalsIgnoreCase(status)) {
+                    // Pending: Can update and cancel
+                    if (canModify) {
+                        btnUpdate.setVisibility(View.VISIBLE);
+                        btnCancel.setVisibility(View.VISIBLE);
+
+                        btnUpdate.setOnClickListener(v -> {
+                            listener.onUpdateClick(booking);
+                        });
+                    } else {
+                        btnCancel.setVisibility(View.VISIBLE); // Can still cancel but with time restriction message
+                        btnCancel.setAlpha(0.6f);
+                    }
+                } else if ("Approved".equalsIgnoreCase(status)) {
+                    // Approved: Can only cancel
+                    if (canModify) {
+                        btnCancel.setVisibility(View.VISIBLE);
+                    } else {
+                        btnCancel.setVisibility(View.VISIBLE);
+                        btnCancel.setAlpha(0.6f);
+                    }
+                }
+
+                // Set cancel button listener
+                btnCancel.setOnClickListener(v -> {
+                    if (canModify) {
+                        listener.onCancelClick(booking);
+                    } else {
+                        // Show time restriction message
+                        listener.onTimeRestrictionClick(booking);
+                    }
+                });
+            }
+            // For Charging, Finalized, Cancelled, Expired status - no action buttons shown
+        }
+
+        private boolean canModifyBooking(String startTime) {
+            try {
+                SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
+                Date startDate = format.parse(startTime);
+                Date now = new Date();
+
+                long timeDifference = startDate.getTime() - now.getTime();
+                long hoursDifference = timeDifference / (1000 * 60 * 60);
+
+                return hoursDifference >= 12;
+            } catch (ParseException e) {
+                e.printStackTrace();
+                return false;
+            }
         }
 
         private void setStatusStyle(String status) {
@@ -200,6 +306,7 @@ public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapte
             }
         }
 
+        private String formatTimeDisplay(String startTime, String endTime) {
         public String formatTimeDisplay(String startTimeUtc, String endTimeUtc) {
             try {
                 // Parse UTC timestamps
@@ -313,6 +420,15 @@ public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapte
         }
     }
 
+    // New interface with all action callbacks
+    public interface OnBookingActionListener {
+        void onBookingClick(BookingItem booking);
+        void onUpdateClick(BookingItem booking);
+        void onCancelClick(BookingItem booking);
+        void onTimeRestrictionClick(BookingItem booking);
+    }
+
+    // Original interface for backward compatibility
     public interface OnBookingClickListener {
         void onBookingClick(BookingItem booking);
     }

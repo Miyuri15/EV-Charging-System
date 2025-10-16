@@ -118,45 +118,6 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- 🔹 EMPTY STATE -->
-    <LinearLayout
-        android:id="@+id/emptyStateLayout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/filterCard"
-        android:layout_above="@+id/footerLayout"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:padding="48dp"
-        android:visibility="gone">
-
-        <ImageView
-            android:layout_width="120dp"
-            android:layout_height="120dp"
-            android:src="@drawable/ic_ev_station"
-            app:tint="@color/text_secondary"
-            android:contentDescription="No bookings" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="No Bookings Found"
-            android:textColor="@color/text_primary"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center"
-            android:text="You don't have any active bookings yet."
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp"
-            android:lineSpacingExtra="4dp" />
-
-    </LinearLayout>
 
     <!-- 🔹 BOOKING LIST -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -175,6 +136,16 @@
             android:clipToPadding="false" />
 
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    <!-- 🔹 EMPTY STATE -->
+    <include
+        android:id="@+id/emptyStateLayout"
+        layout="@layout/layout_empty_state"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/filterCard"
+        android:layout_above="@+id/footerLayout" />
+
 
     <!-- 🔹 FIXED FOOTER -->
     <include
