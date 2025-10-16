@@ -316,7 +316,7 @@ namespace EvBackend.Controllers
         }
 
         [HttpGet("pending")]
-        [Authorize(Roles = "Admin,Backoffice,Operator")]
+        [Authorize(Roles = "Admin,Operator")]
         public async Task<IActionResult> GetPendingBookings([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             if (pageNumber <= 0 || pageSize <= 0 || pageSize > 100)
@@ -333,7 +333,7 @@ namespace EvBackend.Controllers
         }
 
         [HttpGet("approved")]
-        [Authorize(Roles = "Admin,Backoffice,Operator")]
+        [Authorize(Roles = "Admin,Operator")]
         public async Task<IActionResult> GetApprovedBookings([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             if (pageNumber <= 0 || pageSize <= 0 || pageSize > 100)
@@ -347,7 +347,7 @@ namespace EvBackend.Controllers
         }
 
         [HttpGet("completed")]
-        [Authorize(Roles = "Admin,Backoffice,Operator")]
+        [Authorize(Roles = "Admin,Operator")]
         public async Task<IActionResult> GetCompletedBookings([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             if (pageNumber <= 0 || pageSize <= 0 || pageSize > 100)

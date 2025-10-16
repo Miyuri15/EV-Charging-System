@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
-import { getRequest, patchRequest } from "../../components/common/api";
+import {
+  getRequestWithPagination,
+  patchRequest,
+} from "../../components/common/api";
 import { useNavigate } from "react-router-dom";
 import ConfirmModal from "../../components/common/ConfirmModal";
 
-// Types for better type safety
 interface Booking {
   bookingId: string;
   customerName?: string;
@@ -14,11 +16,40 @@ interface Booking {
   createdAt: Date | string;
 }
 
+interface PagedResult<T> {
+  items: T[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}
+
 function BookingManagementPage() {
   const navigate = useNavigate();
-  const [pendingBookings, setPendingBookings] = useState<Booking[]>([]);
-  const [approvedBookings, setApprovedBookings] = useState<Booking[]>([]);
-  const [completedBookings, setCompletedBookings] = useState<Booking[]>([]);
+
+  // State per tab
+  const [pending, setPending] = useState<PagedResult<Booking>>({
+    items: [],
+    totalCount: 0,
+    totalPages: 0,
+    currentPage: 1,
+    pageSize: 10,
+  });
+  const [approved, setApproved] = useState<PagedResult<Booking>>({
+    items: [],
+    totalCount: 0,
+    totalPages: 0,
+    currentPage: 1,
+    pageSize: 10,
+  });
+  const [completed, setCompleted] = useState<PagedResult<Booking>>({
+    items: [],
+    totalCount: 0,
+    totalPages: 0,
+    currentPage: 1,
+    pageSize: 10,
+  });
+
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
@@ -31,42 +62,78 @@ function BookingManagementPage() {
   >(null);
   const [actionBookingId, setActionBookingId] = useState<string | null>(null);
 
-  const fetchBookings = async () => {
-    setLoading(true);
+  const fetchBookings = async (
+    tab: "pending" | "approved" | "completed",
+    pageNumber = 1,
+    pageSize = 10
+  ) => {
     try {
-      const [pendingResponse, approvedResponse, completedResponse] =
-        await Promise.all([
-          getRequest("/bookings/pending"),
-          getRequest("/bookings/approved"),
-          getRequest("/bookings/completed"),
-        ]);
+      let endpoint = "";
+      switch (tab) {
+        case "pending":
+          endpoint = "/bookings/pending";
+          break;
+        case "approved":
+          endpoint = "/bookings/approved";
+          break;
+        case "completed":
+          endpoint = "/bookings/completed";
+          break;
+      }
 
-      if (pendingResponse) setPendingBookings(pendingResponse.data);
-      if (approvedResponse) setApprovedBookings(approvedResponse.data);
-      if (completedResponse) setCompletedBookings(completedResponse.data);
+      const response = await getRequestWithPagination<Booking>(endpoint, {
+        pageNumber,
+        pageSize,
+      });
+
+      if (response?.data) {
+        switch (tab) {
+          case "pending":
+            setPending(response.data);
+            break;
+          case "approved":
+            setApproved(response.data);
+            break;
+          case "completed":
+            setCompleted(response.data);
+            break;
+        }
+      }
+      return response?.data;
     } catch (error) {
-      console.error("Error fetching bookings:", error);
-    } finally {
-      setLoading(false);
+      console.error(`Error fetching ${tab} bookings:`, error);
     }
   };
 
   useEffect(() => {
-    fetchBookings();
+    const loadAll = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          fetchBookings("pending"),
+          fetchBookings("approved"),
+          fetchBookings("completed"),
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAll();
   }, []);
 
   const activeBookings = useMemo(() => {
     switch (activeTab) {
       case "pending":
-        return pendingBookings;
+        return pending.items;
       case "approved":
-        return approvedBookings;
+        return approved.items;
       case "completed":
-        return completedBookings;
+        return completed.items;
       default:
-        return pendingBookings;
+        return [];
     }
-  }, [activeTab, pendingBookings, approvedBookings, completedBookings]);
+  }, [activeTab, pending, approved, completed]);
 
   const handleApproveBooking = (bookingId: string) => {
     setActionBookingId(bookingId);
@@ -93,11 +160,11 @@ function BookingManagementPage() {
 
       const response = await patchRequest(endpoint, {});
 
-      if (!response || response.status !== 200) {
+      if (!response || response.status !== 200)
         throw new Error(`Failed to ${currentAction} booking`);
-      }
 
-      await fetchBookings();
+      // Refresh active tab only
+      await fetchBookings(activeTab);
     } catch (error) {
       console.error(`Error ${currentAction} booking:`, error);
     } finally {
@@ -112,6 +179,14 @@ function BookingManagementPage() {
     setShowConfirmModal(false);
     setCurrentAction(null);
     setActionBookingId(null);
+  };
+
+  const handlePageChange = (
+    tab: "pending" | "approved" | "completed",
+    page: number
+  ) => {
+    setLoading(true);
+    fetchBookings(tab, page).finally(() => setLoading(false));
   };
 
   const getStatusBadge = (status: string) => {
@@ -281,17 +356,9 @@ function BookingManagementPage() {
     <div className="bg-white rounded-xl p-2 shadow-sm border border-gray-200 mb-6">
       <div className="flex space-x-2">
         {[
-          { key: "pending", label: "Pending", count: pendingBookings.length },
-          {
-            key: "approved",
-            label: "Approved",
-            count: approvedBookings.length,
-          },
-          {
-            key: "completed",
-            label: "Completed",
-            count: completedBookings.length,
-          },
+          { key: "pending", label: "Pending", count: pending.totalCount },
+          { key: "approved", label: "Approved", count: approved.totalCount },
+          { key: "completed", label: "Completed", count: completed.totalCount },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -318,17 +385,61 @@ function BookingManagementPage() {
     </div>
   );
 
+  const Pagination = ({
+    totalPages,
+    currentPage,
+  }: {
+    totalPages: number;
+    currentPage: number;
+  }) => {
+    if (totalPages <= 1) return null;
+    const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+    return (
+      <div className="flex justify-center mt-6 space-x-2">
+        {pages.map((page) => (
+          <button
+            key={page}
+            onClick={() => handlePageChange(activeTab, page)}
+            className={`px-3 py-1 rounded-md border ${
+              page === currentPage
+                ? "bg-blue-600 text-white"
+                : "bg-white text-gray-700"
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50/30 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Booking Management
-          </h1>
-          <p className="text-gray-600">
-            Manage and review all booking requests
-          </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Booking Management
+              </h1>
+              <p className="text-gray-600">
+                Manage and review all booking requests
+              </p>
+            </div>
+
+            <div className="mt-1">
+              <button
+                onClick={() => {
+                  setActiveTab("pending");
+                  navigate("/admin/bookings/pending");
+                }}
+                className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+              >
+                View Pending Bookings
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Stats Overview */}
@@ -340,7 +451,7 @@ function BookingManagementPage() {
                   Pending Review
                 </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {pendingBookings.length}
+                  {pending.totalCount}
                 </p>
               </div>
               <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
@@ -366,7 +477,7 @@ function BookingManagementPage() {
               <div>
                 <p className="text-gray-600 text-sm font-medium">Approved</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {approvedBookings.length}
+                  {approved.totalCount}
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -392,7 +503,7 @@ function BookingManagementPage() {
               <div>
                 <p className="text-gray-600 text-sm font-medium">Completed</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {completedBookings.length}
+                  {completed.totalCount}
                 </p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -414,65 +525,17 @@ function BookingManagementPage() {
           </div>
         </div>
 
+        <TabNavigation />
+
         {loading ? (
           <LoadingSpinner />
         ) : (
           <>
-            <TabNavigation />
-
-            {/* Bookings Grid */}
-            <div className="mb-6 flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900 capitalize">
-                {activeTab} Bookings
-              </h2>
-              {activeTab === "pending" && (
-                <button
-                  onClick={() => navigate(`/admin/bookings/${activeTab}`)}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center gap-2"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                    />
-                  </svg>
-                  View All Pending Bookings
-                </button>
-              )}
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {activeBookings.length === 0 ? (
                 <div className="col-span-full text-center py-12">
-                  <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                    <svg
-                      className="w-10 h-10 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    No {activeTab} bookings
-                  </h3>
-                  <p className="text-gray-500 max-w-sm mx-auto">
-                    {activeTab === "pending"
-                      ? "All booking requests have been processed."
-                      : `No ${activeTab} bookings found at the moment.`}
+                  <p className="text-gray-500">
+                    No {activeTab} bookings found.
                   </p>
                 </div>
               ) : (
@@ -485,6 +548,24 @@ function BookingManagementPage() {
                 ))
               )}
             </div>
+
+            {/* Pagination */}
+            <Pagination
+              totalPages={
+                activeTab === "pending"
+                  ? pending.totalPages
+                  : activeTab === "approved"
+                  ? approved.totalPages
+                  : completed.totalPages
+              }
+              currentPage={
+                activeTab === "pending"
+                  ? pending.currentPage
+                  : activeTab === "approved"
+                  ? approved.currentPage
+                  : completed.currentPage
+              }
+            />
           </>
         )}
 
