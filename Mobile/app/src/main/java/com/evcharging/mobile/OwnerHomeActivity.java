@@ -50,6 +50,8 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.material.card.MaterialCardView;
+import com.evcharging.mobile.utils.DialogUtils;
+
 
 public class OwnerHomeActivity extends AppCompatActivity
                 implements OnMapReadyCallback {
@@ -323,12 +325,11 @@ public class OwnerHomeActivity extends AppCompatActivity
                                         if (intent.resolveActivity(getPackageManager()) != null) {
                                                 startActivity(intent);
                                         } else {
-                                                Toast.makeText(this, "Google Maps app not found", Toast.LENGTH_SHORT)
-                                                                .show();
+                                                DialogUtils.showToast(this, "Google Maps app not found");
                                         }
                                 } else {
-                                        Toast.makeText(this, "Current location not available", Toast.LENGTH_SHORT)
-                                                        .show();
+                                        DialogUtils.showToast(this, "Current location not available");
+
                                 }
 
                                 return true; // Consume the click
@@ -430,12 +431,10 @@ public class OwnerHomeActivity extends AppCompatActivity
                                                         cachedLocation = location; // Cache the location
                                                         moveCameraToLocation(location);
                                                 } else {
-                                                        Toast.makeText(this, "Unable to get location.",
-                                                                        Toast.LENGTH_SHORT).show();
+                                                        DialogUtils.showToast(this, "Unable to get location.");
                                                 }
                                         }).addOnFailureListener(e -> {
-                                                Toast.makeText(this, "Error getting location", Toast.LENGTH_SHORT)
-                                                                .show();
+                                        DialogUtils.showToast(this, "Error getting location");
                                         });
                 }
         }
@@ -449,7 +448,7 @@ public class OwnerHomeActivity extends AppCompatActivity
                                 // Try again now that permission is granted
                                 onMapReady(googleMap);
                         } else {
-                                Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
+                                DialogUtils.showToast(this, "Location permission denied");
                         }
                 }
         }
@@ -504,25 +503,26 @@ public class OwnerHomeActivity extends AppCompatActivity
         }
 
         private void attemptLogout() {
-                new androidx.appcompat.app.AlertDialog.Builder(this)
-                                .setTitle("Logout Confirmation")
-                                .setMessage("Are you sure you want to logout?")
-                                .setPositiveButton("Yes", (dialog, which) -> {
-                                        // Perform logout
-                                        ApiResponse response = apiClient.logout();
-                                        Toast.makeText(this, response.getMessage(), Toast.LENGTH_SHORT).show();
+                DialogUtils.showDialog(
+                        this,
+                        "🚪 Logout Confirmation",
+                        "Are you sure you want to logout?",
+                        "Yes, Logout",
+                        () -> {
+                                // Perform logout
+                                ApiResponse response = apiClient.logout();
+                                DialogUtils.showToast(this,
+                                        response != null ? response.getMessage() : "Logged out successfully");
 
-                                        // Redirect to login screen
-                                        Intent intent = new Intent(this, LoginActivity.class);
-                                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                                                        | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                        startActivity(intent);
-                                        finish();
-                                })
-                                .setNegativeButton("No", (dialog, which) -> dialog.dismiss()) // Dismiss dialog if user
-                                                                                              // cancels
-                                .show();
+                                // Redirect to login screen
+                                Intent intent = new Intent(this, LoginActivity.class);
+                                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                startActivity(intent);
+                                finish();
+                        }
+                );
         }
+
 
         private void createNotificationChannel() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -576,7 +576,7 @@ public class OwnerHomeActivity extends AppCompatActivity
                                         int padding = 120;
                                         googleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding));
                                 } else {
-                                        Toast.makeText(this, "No nearby stations found", Toast.LENGTH_SHORT).show();
+                                        DialogUtils.showToast(this, "No nearby stations found");
                                 }
                         });
                 }).start();

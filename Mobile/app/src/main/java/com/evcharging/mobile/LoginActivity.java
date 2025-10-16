@@ -23,6 +23,7 @@ import com.evcharging.mobile.model.User;
 import com.evcharging.mobile.network.ApiClient;
 import com.evcharging.mobile.network.ApiResponse;
 import com.evcharging.mobile.session.SessionManager;
+import com.evcharging.mobile.utils.DialogUtils;
 import com.evcharging.mobile.utils.JwtUtils;
 
 import java.lang.ref.WeakReference;
@@ -176,14 +177,14 @@ public class LoginActivity extends AppCompatActivity {
 
             if (response.isSuccess() && response.getData() != null) {
                 sessionManager.saveCredentials(email, password, rememberMe);
-                Toast.makeText(LoginActivity.this, response.getMessage(), Toast.LENGTH_SHORT).show();
+                DialogUtils.showToast(LoginActivity.this, response.getMessage());
 
                 // Verify token role before navigating
                 String token = response.getData();
                 String role = JwtUtils.getRoleFromToken(token);
 
                 if (role == null || role.equals("Unknown")) {
-                    Toast.makeText(LoginActivity.this, "Invalid or unsupported login token", Toast.LENGTH_SHORT).show();
+                    DialogUtils.showToast(LoginActivity.this, "Invalid or unsupported login token");
                     sessionManager.clearToken();
                     return;
                 }
@@ -196,12 +197,11 @@ public class LoginActivity extends AppCompatActivity {
                 } else {
                     // Unauthorized role (like Admin)
                     sessionManager.clearToken();
-                    Toast.makeText(LoginActivity.this,
-                            "Access denied: This role cannot log in from the mobile app.",
-                            Toast.LENGTH_LONG).show();
+                    DialogUtils.showToast(LoginActivity.this,
+                            "Access denied: This role cannot log in from the mobile app.");
                 }
             } else {
-                Toast.makeText(LoginActivity.this, response.getMessage(), Toast.LENGTH_LONG).show();
+                DialogUtils.showToast(LoginActivity.this, response.getMessage());
             }
         }
     }
@@ -213,7 +213,7 @@ public class LoginActivity extends AppCompatActivity {
         } else if ("operator".equalsIgnoreCase(role)) {
             startActivity(new Intent(this, OperatorHomeActivity.class));
         } else {
-            Toast.makeText(this, "Unknown role!", Toast.LENGTH_SHORT).show();
+            DialogUtils.showToast(this, "Unknown role!");
         }
     }
 
@@ -229,9 +229,8 @@ public class LoginActivity extends AppCompatActivity {
                 runOnUiThread(() -> sessionManager.saveLoggedInUser(user));
             } else {
                 runOnUiThread(() ->
-                        Toast.makeText(LoginActivity.this,
-                                "Failed to load user profile after login",
-                                Toast.LENGTH_SHORT).show()
+                        DialogUtils.showToast(LoginActivity.this,
+                                "Failed to load user profile after login")
                 );
             }
         });

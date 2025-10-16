@@ -156,5 +156,20 @@
         <item name="iconPadding">4dp</item>
     </style>
 
+    <style name="CustomAlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="colorSurface">@color/chip_background_selected</item>
+        <item name="colorPrimary">@color/primary_color</item>
+        <item name="android:textColor">@color/dark_gray</item>
+        <item name="shapeAppearanceMediumComponent">@style/CustomDialogShape</item>
+
+        <item name="android:windowMinWidthMajor">80%</item>
+    </style>
+    <style name="CustomDialogShape" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">16dp</item>
+    </style>
+
+
+
 
 </resources>

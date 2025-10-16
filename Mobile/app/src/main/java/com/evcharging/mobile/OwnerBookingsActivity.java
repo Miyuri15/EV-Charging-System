@@ -23,6 +23,7 @@ import com.evcharging.mobile.model.User;
 import com.evcharging.mobile.network.ApiClient;
 import com.evcharging.mobile.network.ApiResponse;
 import com.evcharging.mobile.session.SessionManager;
+import com.evcharging.mobile.utils.DialogUtils;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.gson.Gson;
@@ -124,21 +125,21 @@ public class OwnerBookingsActivity extends AppCompatActivity {
     }
 
     private void cancelBooking(BookingItem booking) {
-        new AlertDialog.Builder(this)
-                .setTitle("Cancel Booking")
-                .setMessage("Are you sure you want to cancel this booking?")
-                .setPositiveButton("Yes, Cancel", (dialog, which) -> {
-                    performCancelBooking(booking);
-                })
-                .setNegativeButton("No", null)
-                .show();
+        DialogUtils.showDialog(
+                this,
+                "❌ Cancel Booking",
+                "Are you sure you want to cancel this booking?",
+                "Yes, Cancel",
+                () -> performCancelBooking(booking)
+        );
     }
+
 
     private void performCancelBooking(BookingItem booking) {
         new AsyncTask<Void, Void, ApiResponse>() {
             @Override
             protected void onPreExecute() {
-                Toast.makeText(OwnerBookingsActivity.this, "Cancelling booking...", Toast.LENGTH_SHORT).show();
+                DialogUtils.showToast(OwnerBookingsActivity.this, "Cancelling booking...");
             }
 
             @Override
@@ -167,24 +168,34 @@ public class OwnerBookingsActivity extends AppCompatActivity {
 
     private void showTimeRestrictionDialog(BookingItem booking) {
         try {
-            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-            Date startDate = format.parse(booking.getStartTime());
-            SimpleDateFormat displayFormat = new SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault());
+            // Parse UTC time properly
+            SimpleDateFormat utcFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault());
+            utcFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+            Date startDate = utcFormat.parse(booking.getStartTime());
+            Date endDate = utcFormat.parse(booking.getEndTime());
+
+            // Format to local time zone (e.g., Colombo)
+            SimpleDateFormat localFormat = new SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault());
+            localFormat.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Colombo"));
 
             String message = "You can only modify or cancel bookings at least 12 hours before the start time.\n\n" +
-                    "Your booking starts on: " + displayFormat.format(startDate) + "\n" +
-                    "Modification deadline has passed.";
+                    "Your booking starts on:\n" +
+                    localFormat.format(startDate) + " - " + localFormat.format(endDate) +
+                    "\n\nModification deadline has passed.";
 
-            new AlertDialog.Builder(this)
-                    .setTitle("Time Restriction")
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(OwnerBookingsActivity.this, R.style.CustomAlertDialog)
+                    .setTitle("⏰ Time Restriction")
                     .setMessage(message)
-                    .setPositiveButton("OK", null)
+                    .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
                     .show();
-        } catch (ParseException e) {
+
+        } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(this, "Error parsing booking time", Toast.LENGTH_SHORT).show();
         }
     }
+
+
 
     private void setupFilterChips() {
         if (chipGroup == null) {
