@@ -702,13 +702,21 @@ public class OwnerBookingActivity extends AppCompatActivity {
                         String qrBase64 = bookingObj.optString("qrImageBase64");
 
                         if (qrBase64 != null && !qrBase64.isEmpty()) {
-                            Intent intent = new Intent(OwnerBookingActivity.this, BookingConfirmationActivity.class);
-                            intent.putExtra("qrBitmap", qrBase64);
-                            startActivity(intent);
                             toast("✅ Booking created successfully!");
+
+                            // Navigate to OwnerBookingsActivity instead of BookingConfirmation
+                            Intent intent = new Intent(OwnerBookingActivity.this, OwnerBookingsActivity.class);
+                            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(intent);
+                            finish(); // Close current activity
                         } else {
-                            toast("Booking created, but no QR found");
+                            toast("Booking created successfully, but no QR found");
+                            Intent intent = new Intent(OwnerBookingActivity.this, OwnerBookingsActivity.class);
+                            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(intent);
+                            finish();
                         }
+
                     } catch (Exception e) {
                         Log.e("BookingConfirm", "QR decode error", e);
                         toast("Error showing QR code");

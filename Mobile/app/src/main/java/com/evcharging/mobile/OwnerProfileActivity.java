@@ -19,6 +19,7 @@ import com.evcharging.mobile.model.User;
 import com.evcharging.mobile.network.ApiClient;
 import com.evcharging.mobile.network.ApiResponse;
 import com.evcharging.mobile.session.SessionManager;
+import com.evcharging.mobile.utils.DialogUtils;
 
 public class OwnerProfileActivity extends AppCompatActivity {
 
@@ -66,33 +67,44 @@ public class OwnerProfileActivity extends AppCompatActivity {
             new LoadProfileTask().execute();
         });
 
-        // Deactivate button
-        btnDeactivate.setOnClickListener(v -> new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Deactivate Account")
-                .setMessage("Are you sure you want to deactivate your account?")
-                .setPositiveButton("Yes", (dialog, which) -> new DeactivateTask().execute())
-                .setNegativeButton("No", (dialog, which) -> dialog.dismiss())
-                .show());
+// Deactivate Account
+        btnDeactivate.setOnClickListener(v ->
+                DialogUtils.showDialog(
+                        this,
+                        "🚫 Deactivate Account",
+                        "Are you sure you want to deactivate your account?",
+                        "Yes, Deactivate",
+                        () -> new DeactivateTask().execute()
+                )
+        );
 
-        // Reactivation button
-        btnRequestReactivation.setOnClickListener(v -> new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Request Reactivation")
-                .setMessage("Do you want to request reactivation of your account?")
-                .setPositiveButton("Yes", (dialog, which) -> new ReactivationTask().execute())
-                .setNegativeButton("No", (dialog, which) -> dialog.dismiss())
-                .show());
+//  Request Reactivation
+        btnRequestReactivation.setOnClickListener(v ->
+                DialogUtils.showDialog(
+                        this,
+                        "🔄 Request Reactivation",
+                        "Do you want to request reactivation of your account?",
+                        "Yes, Request",
+                        () -> new ReactivationTask().execute()
+                )
+        );
 
-        btnForgetUser.setOnClickListener(v -> new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Forget User")
-                .setMessage("Do you want to forget your user data?")
-                .setPositiveButton("Yes", (dialog, which) -> {
-                    sessionManager.clearAll();
-                    Toast.makeText(this, "User data cleared", Toast.LENGTH_SHORT).show();
-                    startActivity(new Intent(this, LoginActivity.class));
-                    finish();
-                })
-                .setNegativeButton("No", (dialog, which) -> dialog.dismiss())
-                .show());
+// Forget User
+        btnForgetUser.setOnClickListener(v ->
+                DialogUtils.showDialog(
+                        this,
+                        "🧹 Forget User",
+                        "Do you want to forget your user data?",
+                        "Yes, Forget",
+                        () -> {
+                            sessionManager.clearAll();
+                            DialogUtils.showToast(this, "User data cleared");
+                            startActivity(new Intent(this, LoginActivity.class));
+                            finish();
+                        }
+                )
+        );
+
 
         setupFooterNavigation();
         highlightActiveTab("profile");
