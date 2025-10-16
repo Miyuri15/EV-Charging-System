@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getRequest, patchRequest } from "../../components/common/api";
 import { useNavigate } from "react-router-dom";
 import ConfirmModal from "../../components/common/ConfirmModal";
+import formatTime from "../../components/common/formatTime";
 
 function PendingBookingsPage() {
   const navigate = useNavigate();
@@ -139,7 +140,11 @@ function PendingBookingsPage() {
                 <div className="flex justify-between">
                   <span>Time Slot:</span>
                   <span className="font-semibold">
-                    {booking.timeSlotRange || "N/A"}
+                    {booking.startTime && booking.endTime
+                      ? `${formatTime(booking.startTime)} - ${formatTime(
+                          booking.endTime
+                        )}`
+                      : ""}
                   </span>
                 </div>
                 <div className="flex justify-between">
