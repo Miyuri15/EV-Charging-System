@@ -30,7 +30,6 @@ import org.json.JSONObject;
 public class BookingDetailsActivity extends AppCompatActivity {
 
     private TextView tvBookingId, tvStatus, tvStartTime, tvEndTime;
-    private ImageView ivQrCode;
     private Button btnScanQr, btnFinalize;
     private ImageButton btnBack;
     private SwipeRefreshLayout srBookingDetails;
@@ -83,7 +82,6 @@ public class BookingDetailsActivity extends AppCompatActivity {
         tvStatus = findViewById(R.id.tvStatus);
         tvStartTime = findViewById(R.id.tvStartTime);
         tvEndTime = findViewById(R.id.tvEndTime);
-        ivQrCode = findViewById(R.id.ivQrCode);
         btnScanQr = findViewById(R.id.btnScanQr);
         btnFinalize = findViewById(R.id.btnFinalize);
         btnBack = findViewById(R.id.btnBack);
@@ -100,20 +98,14 @@ public class BookingDetailsActivity extends AppCompatActivity {
         if (endTime == null || endTime.isEmpty())
             endTime = getIntent().getStringExtra("endTime");
 
-        String qrImageBase64 = getIntent().getStringExtra("qrImageBase64");
+
 
         tvBookingId.setText(bookingId != null ? bookingId : "-");
         tvStatus.setText("Status: " + (status != null ? status : "-"));
         tvStartTime.setText("Start: " + (startTime != null ? startTime : "-"));
         tvEndTime.setText("End: " + (endTime != null ? endTime : "-"));
 
-        if (qrImageBase64 != null && !qrImageBase64.isEmpty()) {
-            byte[] decoded = Base64.decode(qrImageBase64, Base64.DEFAULT);
-            Bitmap bitmap = BitmapFactory.decodeByteArray(decoded, 0, decoded.length);
-            ivQrCode.setImageBitmap(bitmap);
-        } else {
-            ivQrCode.setImageResource(android.R.drawable.ic_menu_report_image);
-        }
+
     }
 
     private void startQrScanner() {
@@ -173,18 +165,14 @@ public class BookingDetailsActivity extends AppCompatActivity {
                     String status = o.optString("status", "-");
                     String startTime = o.optString("formattedStartTime", o.optString("startTime", "-"));
                     String endTime = o.optString("formattedEndTime", o.optString("endTime", "-"));
-                    String qrImageBase64 = o.optString("qrImageBase64", null);
+
 
                     tvBookingId.setText(bookingId);
                     tvStatus.setText("Status: " + status);
                     tvStartTime.setText("Start: " + startTime);
                     tvEndTime.setText("End: " + endTime);
 
-                    if (qrImageBase64 != null && !qrImageBase64.isEmpty()) {
-                        byte[] decoded = Base64.decode(qrImageBase64, Base64.DEFAULT);
-                        Bitmap bitmap = BitmapFactory.decodeByteArray(decoded, 0, decoded.length);
-                        ivQrCode.setImageBitmap(bitmap);
-                    }
+                    
 
                 } catch (Exception e) {
                     Log.e("BOOKING_DETAILS", "parse error: " + e.getMessage());
