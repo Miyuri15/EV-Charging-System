@@ -98,6 +98,7 @@ namespace EvBackend.Controllers
 
             var slots = _db.GetCollection<Slot>("Slots");
             var bookings = _db.GetCollection<Booking>("Bookings");
+            var stations = _db.GetCollection<Station>("Stations"); // Add reference to the Station collection
 
             var slot = await slots.Find(s => s.SlotId == slotId).FirstOrDefaultAsync();
             if (slot == null)
@@ -120,6 +121,25 @@ namespace EvBackend.Controllers
                     .Set(s => s.Status, normalized)
                     .Set(s => s.UpdatedAt, DateTime.UtcNow)
             );
+
+            // Update the availableSlots in the associated Station
+            var station = await stations.Find(s => s.StationId == slot.StationId).FirstOrDefaultAsync();
+            if (station != null)
+            {
+                // If the status changes to Available, increment availableSlots
+                // If the status changes from Available, decrement availableSlots
+                int availableSlotsChange = (normalized == "Available" && slot.Status != "Available") ? 1 :
+                    (slot.Status == "Available" && normalized != "Available") ? -1 : 0;
+
+                if (availableSlotsChange != 0)
+                {
+                    var stationUpdate = Builders<Station>.Update
+                        .Inc(s => s.AvailableSlots, availableSlotsChange)
+                        .Set(s => s.UpdatedAt, DateTime.UtcNow);
+
+                    await stations.UpdateOneAsync(s => s.StationId == slot.StationId, stationUpdate);
+                }
+            }
 
             // Auto-cancel future bookings if slot becomes unavailable
             int cancelled = 0;
@@ -145,7 +165,7 @@ namespace EvBackend.Controllers
 
 
     }
-    
+
 
     public class SlotStatusUpdateDto
     {
