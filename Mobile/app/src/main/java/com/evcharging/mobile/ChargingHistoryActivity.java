@@ -20,6 +20,8 @@ import com.evcharging.mobile.model.User;
 import com.evcharging.mobile.network.ApiClient;
 import com.evcharging.mobile.network.ApiResponse;
 import com.evcharging.mobile.session.SessionManager;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -32,33 +34,40 @@ public class ChargingHistoryActivity extends AppCompatActivity {
     private SwipeRefreshLayout swipeRefreshLayout;
     private RecyclerView recyclerViewHistory;
     private LinearLayout emptyStateLayout;
-
+    private ChipGroup chipGroupHistory;
+    private Chip chipAll, chipFinalized, chipCancelled, chipExpired;
 
     private SessionManager session;
     private ApiClient apiClient;
     private OwnerBookingAdapter adapter;
+
+    private List<BookingItem> allBookings = new ArrayList<>();
+    private List<BookingItem> filteredBookings = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_charging_history);
 
-
-
-        // Initialize
         session = new SessionManager(this);
         apiClient = new ApiClient(session);
-// --- Setup Header Back Button ---
+
+        // --- Header ---
         ImageButton btnBack = findViewById(R.id.btnBack);
-        if (btnBack != null) {
-            btnBack.setOnClickListener(v -> onBackPressed());
-        }
+        if (btnBack != null) btnBack.setOnClickListener(v -> onBackPressed());
+
         swipeRefreshLayout = findViewById(R.id.swipe);
         recyclerViewHistory = findViewById(R.id.rvHistory);
         emptyStateLayout = findViewById(R.id.emptyStateLayout);
 
+        // --- Filter Chips ---
+        chipGroupHistory = findViewById(R.id.chipGroupHistory);
+        chipAll = findViewById(R.id.chipAll);
+        chipFinalized = findViewById(R.id.chipFinalized);
+        chipCancelled = findViewById(R.id.chipCancelled);
+        chipExpired = findViewById(R.id.chipExpired);
 
-        // Setup Adapter + RecyclerView
+        // --- RecyclerView Setup ---
         adapter = new OwnerBookingAdapter(new ArrayList<>(), item -> {
             Intent i = new Intent(this, OwnerBookingDetailsActivity.class);
             i.putExtra("bookingId", item.getBookingId());
@@ -79,16 +88,18 @@ public class ChargingHistoryActivity extends AppCompatActivity {
 
         setupFooterNavigation();
         highlightActiveTab("bookings");
+
+        setupFilterChips();
     }
 
-    // ---------------- Footer Navigation Setup ----------------
+    // ---------------- Footer Navigation ----------------
     private void setupFooterNavigation() {
         LinearLayout navHome = findViewById(R.id.navHome);
         LinearLayout navBookings = findViewById(R.id.navBookings);
         LinearLayout navProfile = findViewById(R.id.navProfile);
 
         if (navHome == null || navBookings == null || navProfile == null)
-            return; // Footer not included on this layout
+            return;
 
         navHome.setOnClickListener(v -> {
             Intent i = new Intent(this, OwnerHomeActivity.class);
@@ -160,7 +171,7 @@ public class ChargingHistoryActivity extends AppCompatActivity {
     }
 
     /**
-     * Load past (Finalized/Expired/Canceled) bookings
+     * Load past (Finalized/Cancelled/Expired) bookings
      */
     private void loadData() {
         swipeRefreshLayout.setRefreshing(true);
@@ -169,7 +180,6 @@ public class ChargingHistoryActivity extends AppCompatActivity {
             @Override
             protected List<BookingItem> doInBackground(Void... voids) {
                 try {
-                    // Fetch owner ID
                     User loggedUser = session.getLoggedInUser();
                     String ownerId = (loggedUser != null) ? loggedUser.getUserId() : null;
                     if (ownerId == null || ownerId.isEmpty()) return null;
@@ -196,7 +206,7 @@ public class ChargingHistoryActivity extends AppCompatActivity {
                         b.setEndTime(o.optString("endTime"));
                         b.setQrImageBase64(o.optString("qrImageBase64", null));
 
-                        // Include only past bookings
+                        // Include finalized, cancelled, and expired
                         if ("Finalized".equalsIgnoreCase(b.getStatus()) ||
                                 "Cancelled".equalsIgnoreCase(b.getStatus()) ||
                                 "Expired".equalsIgnoreCase(b.getStatus())) {
@@ -218,16 +228,17 @@ public class ChargingHistoryActivity extends AppCompatActivity {
                 if (data == null || data.isEmpty()) {
                     showEmptyState(
                             "No Charging History Found",
-                            "You haven't completed or cancelled any bookings yet.",
-                            R.drawable.ic_history // use a relevant icon, or keep ic_ev_station
+                            "You haven't completed, cancelled or expired any bookings yet.",
+                            R.drawable.ic_history
                     );
                     adapter.setData(new ArrayList<>());
                 } else {
                     hideEmptyState();
-                    adapter.setData(data);
+                    allBookings = data;
+                    applyFilter(null); // Show "All" by default
                 }
-
             }
+
             private void showEmptyState(String title, String subtitle, int iconRes) {
                 if (emptyStateLayout != null) {
                     emptyStateLayout.setVisibility(View.VISIBLE);
@@ -251,5 +262,40 @@ public class ChargingHistoryActivity extends AppCompatActivity {
             }
 
         }.execute();
+    }
+
+    // ----------------------------------------------------------
+    // 🔹 FILTER CHIP LOGIC
+    // ----------------------------------------------------------
+    private void setupFilterChips() {
+        if (chipGroupHistory == null) return;
+
+        chipGroupHistory.setOnCheckedChangeListener((group, checkedId) -> {
+            String selectedStatus = null;
+            if (checkedId == R.id.chipFinalized) selectedStatus = "Finalized";
+            else if (checkedId == R.id.chipCancelled) selectedStatus = "Cancelled";
+            else if (checkedId == R.id.chipExpired) selectedStatus = "Expired";
+
+            applyFilter(selectedStatus);
+        });
+
+        // Select "All" by default
+        if (chipAll != null) chipAll.setChecked(true);
+    }
+
+    private void applyFilter(String status) {
+        filteredBookings.clear();
+
+        if (status == null) {
+            filteredBookings.addAll(allBookings);
+        } else {
+            for (BookingItem b : allBookings) {
+                if (b.getStatus() != null && b.getStatus().equalsIgnoreCase(status)) {
+                    filteredBookings.add(b);
+                }
+            }
+        }
+
+        adapter.setData(filteredBookings);
     }
 }
