@@ -909,5 +909,16 @@ namespace EvBackend.Services
             };
         }
 
+        public async Task<bool> HasActiveBookingAsync(string ownerId)
+        {
+            var bookingCol = _db.GetCollection<Booking>("Bookings");
+
+            // Check if there are any active bookings for the EV owner
+            var activeBooking = await bookingCol.Find(b => b.OwnerId == ownerId && (b.Status == "Approved" || b.Status == "Charging"))
+                                                 .FirstOrDefaultAsync();
+
+            return activeBooking != null;
+        }
+
     }
 }

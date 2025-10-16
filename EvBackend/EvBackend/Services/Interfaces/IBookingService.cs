@@ -49,5 +49,6 @@ namespace EvBackend.Services.Interfaces
         Task<PagedResultDto<BookingDto>> GetPendingBookingsAsync(int pageNumber, int pageSize);
         Task<PagedResultDto<BookingDto>> GetApprovedBookingsAsync(int pageNumber, int pageSize);
         Task<PagedResultDto<BookingDto>> GetCompletedBookingsAsync(int pageNumber, int pageSize);
+        Task<bool> HasActiveBookingAsync(string ownerId);
     }
 }

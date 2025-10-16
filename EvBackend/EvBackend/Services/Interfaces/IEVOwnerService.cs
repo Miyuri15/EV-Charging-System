@@ -15,7 +15,7 @@ namespace EvBackend.Services.Interfaces
         Task<EVOwnerDto> GetEVOwnerByNIC(string nic);
         Task<IEnumerable<EVOwnerDto>> GetAllEVOwners(int page, int pageSize);
         Task<EVOwnerDto> UpdateEVOwner(string nic, UpdateEVOwnerDto dto);
-        Task<bool> ChangeEVOwnerStatus(string nic, bool isActive);
+        Task<bool> ChangeEVOwnerStatus(string nic, bool isActive, IBookingService bookingService);
         Task<bool> RequestReactivation(string nic);
         Task<int> GetReactivationRequestCount();
         Task<IEnumerable<EVOwnerDto>> GetEVOwnersWithReactivationRequests();
