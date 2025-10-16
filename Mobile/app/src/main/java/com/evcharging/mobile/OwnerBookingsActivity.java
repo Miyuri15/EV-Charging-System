@@ -192,20 +192,38 @@ public class OwnerBookingsActivity extends AppCompatActivity {
     }
 
     private void updateEmptyState() {
-        if (emptyStateLayout == null || recyclerView == null) {
-            return;
-        }
-
-        if (filteredBookings.isEmpty()) {
-            emptyStateLayout.setVisibility(View.VISIBLE);
-            recyclerView.setVisibility(View.GONE);
-            Log.d("OwnerBookings", "Empty state shown");
+        if (filteredBookings == null || filteredBookings.isEmpty()) {
+            showEmptyState(
+                    "No Bookings Found",
+                    "You don't have any active bookings yet.",
+                    R.drawable.ic_ev_station
+            );
         } else {
-            emptyStateLayout.setVisibility(View.GONE);
-            recyclerView.setVisibility(View.VISIBLE);
-            Log.d("OwnerBookings", "Showing " + filteredBookings.size() + " bookings");
+            hideEmptyState();
         }
     }
+    private void showEmptyState(String title, String subtitle, int iconRes) {
+        if (emptyStateLayout != null) {
+            emptyStateLayout.setVisibility(View.VISIBLE);
+            recyclerView.setVisibility(View.GONE);
+
+            TextView tvTitle = emptyStateLayout.findViewById(R.id.tvEmptyTitle);
+            TextView tvSubtitle = emptyStateLayout.findViewById(R.id.tvEmptySubtitle);
+            ImageView ivIcon = emptyStateLayout.findViewById(R.id.ivEmptyIcon);
+
+            if (tvTitle != null) tvTitle.setText(title);
+            if (tvSubtitle != null) tvSubtitle.setText(subtitle);
+            if (ivIcon != null && iconRes != 0) ivIcon.setImageResource(iconRes);
+        }
+    }
+
+    private void hideEmptyState() {
+        if (emptyStateLayout != null) {
+            emptyStateLayout.setVisibility(View.GONE);
+            recyclerView.setVisibility(View.VISIBLE);
+        }
+    }
+
 
     // ---------------- Footer Navigation Setup ----------------
     private void setupFooterNavigation() {
