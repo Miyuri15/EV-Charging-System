@@ -50,7 +50,7 @@ const Layout: React.FC = () => {
       connection
         .start()
         .then(() => console.log("✅ SignalR Connected"))
-        .catch((err) => console.error("❌ SignalR Connection Failed:", err));
+        .catch((err: unknown) => console.error("❌ SignalR Connection Failed:", err));
 
       connection.on("ReceiveNotification", (notification: any) => {
         setNotifications((prev) => [notification, ...prev]);
