@@ -33,6 +33,9 @@ public class AllBookingsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_all_bookings);
         setTitle("All Upcoming Bookings");
 
+        // ✅ Setup footer navigation
+        FooterHelper.setupFooter(this);
+
         session = new SessionManager(this);
         lvAllBookings = findViewById(R.id.lvAllBookings);
         srAllBookings = findViewById(R.id.srAllBookings);
@@ -48,7 +51,6 @@ public class AllBookingsActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // auto-refresh to reflect any changes/new bookings
         loadUpcomingBookings();
     }
 
