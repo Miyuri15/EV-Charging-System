@@ -198,6 +198,23 @@ function PendingBookingsPage() {
                     </span>
                   </div>
                   <div className="flex justify-between">
+                    <span>Booking Date</span>
+                    <span className="font-semibold">
+                      {booking.startTime
+                        ? new Date(booking.startTime).toLocaleDateString(
+                            "en-US",
+                            {
+                              timeZone: "Asia/Colombo",
+                              year: "numeric",
+                              month: "2-digit",
+                              day: "2-digit",
+                            }
+                          )
+                        : "N/A"}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between">
                     <span>Created At:</span>
                     <span className="font-semibold">
                       {new Date(booking.createdAt).toLocaleString("en-US", {
