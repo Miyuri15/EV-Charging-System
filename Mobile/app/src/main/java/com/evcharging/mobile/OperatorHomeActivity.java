@@ -87,14 +87,7 @@ public class OperatorHomeActivity extends AppCompatActivity {
         ivProfile.setOnClickListener(v -> startActivity(new Intent(this, OperatorProfileActivity.class)));
         btnViewProfile.setOnClickListener(v -> startActivity(new Intent(this, OperatorProfileActivity.class)));
 
-        btnLogout.setOnClickListener(v -> {
-            ApiClient apiClient = new ApiClient(session);
-            ApiResponse response = apiClient.logout();
-            Toast.makeText(this, response.getMessage(), Toast.LENGTH_SHORT).show();
-            startActivity(new Intent(this, LoginActivity.class)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
-            finish();
-        });
+        btnLogout.setOnClickListener(v -> attemptLogout());
 
         btnUpdateSlots.setOnClickListener(v -> {
             Intent intent = new Intent(this, OperatorUpdateSlotsActivity.class);
@@ -212,5 +205,27 @@ public class OperatorHomeActivity extends AppCompatActivity {
             }
 
         }.execute();
+    }
+
+    private void attemptLogout() {
+        ApiClient apiClient = new ApiClient(session);
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Logout Confirmation")
+                .setMessage("Are you sure you want to logout?")
+                .setPositiveButton("Yes", (dialog, which) -> {
+                    // Perform logout
+                    ApiResponse response = apiClient.logout();
+                    Toast.makeText(this, response.getMessage(), Toast.LENGTH_SHORT).show();
+
+                    // Redirect to login screen
+                    Intent intent = new Intent(this, LoginActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                            | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    finish();
+                })
+                .setNegativeButton("No", (dialog, which) -> dialog.dismiss()) // Dismiss dialog if user
+                // cancels
+                .show();
     }
 }

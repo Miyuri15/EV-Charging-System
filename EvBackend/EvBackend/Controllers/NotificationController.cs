@@ -33,7 +33,6 @@ namespace EvBackend.Controllers
         {
             try
             {
-                _logger.LogInformation("Attempting to send notification to UserId: {UserId}", notification.UserId);
                 await _notificationService.SendNotification(notification.UserId, notification.Message);
                 _logger.LogInformation("Notification sent successfully to UserId: {UserId}", notification.UserId);
 
@@ -58,16 +57,13 @@ namespace EvBackend.Controllers
                     _logger.LogWarning("Invalid request - User ID is null or empty.");
                     return BadRequest(new { message = "User ID cannot be null or empty." });
                 }
-                _logger.LogInformation("Fetching notifications for UserId: {UserId}", userId);
                 var notifications = await _notificationService.GetUserNotifications(userId);
 
                 if (notifications == null || !notifications.Any())
                 {
-                    _logger.LogInformation("No notifications found for UserId: {UserId}", userId);
                     return Ok(new List<object>());
                 }
 
-                _logger.LogInformation("Fetched {Count} notifications for UserId: {UserId}", notifications.Count(), userId);
                 return Ok(notifications);
             }
             catch (Exception ex)
@@ -92,16 +88,13 @@ namespace EvBackend.Controllers
                     return Unauthorized(new { message = "User ID not found." });
                 }
 
-                _logger.LogInformation("Fetching notifications for authenticated user (UserId: {UserId})", userId);
                 var notifications = await _notificationService.GetUserNotifications(userId);
 
                 if (notifications == null || !notifications.Any())
                 {
-                    _logger.LogInformation("No notifications found for authenticated user (UserId: {UserId})", userId);
                     return Ok(new List<object>());
                 }
 
-                _logger.LogInformation("Fetched {Count} notifications for authenticated user (UserId: {UserId})", notifications.Count(), userId);
                 return Ok(notifications);
             }
             catch (Exception ex)
@@ -118,9 +111,7 @@ namespace EvBackend.Controllers
         {
             try
             {
-                _logger.LogInformation("Marking notification as read. NotificationId: {NotificationId}", notificationId);
                 await _notificationService.MarkNotificationAsRead(notificationId);
-                _logger.LogInformation("Notification marked as read successfully. NotificationId: {NotificationId}", notificationId);
 
                 return Ok(new { message = "Notification marked as read successfully." });
             }
@@ -138,9 +129,7 @@ namespace EvBackend.Controllers
         {
             try
             {
-                _logger.LogInformation("Deleting notification. NotificationId: {NotificationId}", notificationId);
                 await _notificationService.DeleteNotification(notificationId);
-                _logger.LogInformation("Notification deleted successfully. NotificationId: {NotificationId}", notificationId);
 
                 return Ok(new { message = "Notification deleted successfully." });
             }

@@ -89,7 +89,7 @@ namespace EvBackend.Services
                 var tokenDescriptor = new SecurityTokenDescriptor
                 {
                     Subject = new ClaimsIdentity(claims),
-                    Expires = DateTime.UtcNow.AddHours(2),
+                    Expires = DateTime.UtcNow.AddHours(12),
                     Issuer = issuer,
                     Audience = audience,
                     SigningCredentials = new SigningCredentials(
@@ -133,7 +133,7 @@ namespace EvBackend.Services
                 new Claim("FullName", evOwner.FullName),
                 new Claim("UserType", "EVOwner")
             }),
-                    Expires = DateTime.UtcNow.AddHours(2),
+                    Expires = DateTime.UtcNow.AddHours(12),
                     Issuer = issuer,
                     Audience = audience,
                     SigningCredentials = new SigningCredentials(

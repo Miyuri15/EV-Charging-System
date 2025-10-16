@@ -1,4 +1,10 @@
-import { Routes, Route, useLocation, Navigate } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  useLocation,
+  Navigate,
+  useNavigate,
+} from "react-router-dom";
 import Layout from "./components/Layout";
 import AdminDashboard from "./components/Admin/AdminDashboard";
 import CSOperatorDashboard from "./components/CSOperator/CSOperatorDashboard";
@@ -25,9 +31,16 @@ import OperatorBookings from "./pages/operator/OperatorBookings";
 import BookingManagementPage from "./pages/admin/BookingManagementPage";
 import PendingBookingsPage from "./pages/admin/PendingBookingsPage";
 import BookingDetailsPage from "./pages/admin/BookingDetailsPage";
+import { useEffect } from "react";
+import { setNavigate } from "./components/common/navigation";
 
 function App() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setNavigate(navigate);
+  }, [navigate]);
 
   // Set document title based on current route
   const getPageTitle = () => {
