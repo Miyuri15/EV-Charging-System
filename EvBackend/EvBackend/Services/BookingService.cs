@@ -25,13 +25,15 @@ namespace EvBackend.Services
         private readonly IMongoDatabase _db;
         private readonly IEVOwnerService _evOwnerService;
         private readonly IStationService _stationService;
+        private readonly INotificationService _notificationService;
 
 
-        public BookingService(IMongoDatabase db, IEVOwnerService evOwnerService, IStationService stationService)
+        public BookingService(IMongoDatabase db, IEVOwnerService evOwnerService, IStationService stationService, INotificationService notificationService)
         {
             _db = db;
             _evOwnerService = evOwnerService;
             _stationService = stationService;
+            _notificationService = notificationService;
         }
 
         // ------------------------------
@@ -193,6 +195,12 @@ namespace EvBackend.Services
             await timeSlotCol.UpdateOneAsync(
                 t => t.TimeSlotId == ts.TimeSlotId,
                 Builders<TimeSlot>.Update.Set(t => t.Status, "Booked")
+            );
+
+            var owner = await _evOwnerService.GetEVOwnerById(ownerId);
+
+            await _notificationService.SendNotificationToAdmins(
+                $"New booking created at station '{station.Name}' by {owner.FullName} (Owner ID: {ownerId}). Booking ID: {booking.BookingId}."
             );
 
             return new BookingDto
