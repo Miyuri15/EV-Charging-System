@@ -13,6 +13,7 @@ import com.evcharging.mobile.model.User;
 import com.evcharging.mobile.network.ApiClient;
 import com.evcharging.mobile.network.ApiResponse;
 import com.evcharging.mobile.session.SessionManager;
+import com.evcharging.mobile.utils.DialogUtils;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 
 public class OperatorHomeActivity extends AppCompatActivity {
 
+    private ApiClient apiClient;
     private SessionManager session;
     private ImageView ivProfile;
     private TextView tvWelcomeOperator, tvStationInfo, tvOperatorId;
@@ -37,6 +39,7 @@ public class OperatorHomeActivity extends AppCompatActivity {
         FooterHelper.setupFooter(this);
 
         session = new SessionManager(this);
+        apiClient = new ApiClient(session);
         bindViews();
         loadOperatorBasics();
         wireClicks();
@@ -208,24 +211,27 @@ public class OperatorHomeActivity extends AppCompatActivity {
     }
 
     private void attemptLogout() {
-        ApiClient apiClient = new ApiClient(session);
-        new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Logout Confirmation")
-                .setMessage("Are you sure you want to logout?")
-                .setPositiveButton("Yes", (dialog, which) -> {
-                    // Perform logout
+        DialogUtils.showDialog(
+                this,
+                "🚪 Logout Confirmation",
+                "Are you sure you want to logout?",
+                "Yes, Logout",
+                () -> {
+                    // Perform logout safely
                     ApiResponse response = apiClient.logout();
-                    Toast.makeText(this, response.getMessage(), Toast.LENGTH_SHORT).show();
+                    String message = (response != null && response.getMessage() != null)
+                            ? response.getMessage()
+                            : "Logged out successfully";
+
+                    DialogUtils.showToast(this, message);
 
                     // Redirect to login screen
                     Intent intent = new Intent(this, LoginActivity.class);
-                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                            | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
                     finish();
-                })
-                .setNegativeButton("No", (dialog, which) -> dialog.dismiss()) // Dismiss dialog if user
-                // cancels
-                .show();
+                }
+        );
     }
+
 }
