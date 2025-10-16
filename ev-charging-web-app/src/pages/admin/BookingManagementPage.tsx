@@ -8,12 +8,18 @@ import ConfirmModal from "../../components/common/ConfirmModal";
 
 interface Booking {
   bookingId: string;
-  customerName?: string;
-  serviceType?: string;
-  bookingDate?: string;
   status?: string;
   amount?: number;
   createdAt: Date | string;
+  ownerName?: string;
+  stationName?: string;
+  stationLocation?: string;
+  slotNumber?: number;
+  startTime?: string;
+  endTime?: string;
+  formattedStartTime?: string;
+  formattedEndTime?: string;
+  formattedDate?: string;
 }
 
 interface PagedResult<T> {
@@ -62,6 +68,7 @@ function BookingManagementPage() {
   >(null);
   const [actionBookingId, setActionBookingId] = useState<string | null>(null);
 
+  // Then in your fetchBookings function, map the data:
   const fetchBookings = async (
     tab: "pending" | "approved" | "completed",
     pageNumber = 1,
@@ -245,10 +252,12 @@ function BookingManagementPage() {
       <div className="flex justify-between items-start mb-4">
         <div>
           <h4 className="font-semibold text-gray-900 text-lg mb-1">
-            {booking.customerName || `Booking #${booking.bookingId.slice(-8)}`}
+            {/* Use ownerName directly */}
+            {booking.ownerName || `Booking #${booking.bookingId.slice(-8)}`}
           </h4>
           <p className="text-gray-600 text-sm">
-            {booking.serviceType || "General Service"}
+            {/* Use stationName directly */}
+            {booking.stationName || "General Service"}
           </p>
         </div>
         {getStatusBadge(booking.status?.toLowerCase() || "pending")}
@@ -259,12 +268,24 @@ function BookingManagementPage() {
           <p className="text-gray-500">Booking ID</p>
           <p className="font-medium text-gray-900">{booking.bookingId}</p>
         </div>
+        {/*
+         */}
         <div>
           <p className="text-gray-500">Date</p>
           <p className="font-medium text-gray-900">
             {formatDate(booking.createdAt)}
           </p>
         </div>
+        {/* Show time range if available */}
+        {(booking.formattedStartTime || booking.startTime) && (
+          <div className="col-span-2">
+            <p className="text-gray-500">Time Slot</p>
+            <p className="font-medium text-gray-900">
+              {booking.formattedStartTime || formatDate(booking.startTime!)} -{" "}
+              {booking.formattedEndTime || formatDate(booking.endTime!)}
+            </p>
+          </div>
+        )}
         {booking.amount && (
           <div className="col-span-2">
             <p className="text-gray-500">Amount</p>
@@ -275,6 +296,7 @@ function BookingManagementPage() {
         )}
       </div>
 
+      {/* Rest of the component remains the same */}
       <div className="flex justify-between items-center pt-4 border-t border-gray-100">
         <button
           onClick={() => navigate(`/admin/bookings/${booking.bookingId}`)}
