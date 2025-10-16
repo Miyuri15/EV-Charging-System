@@ -766,19 +766,21 @@ namespace EvBackend.Services
             };
         }
 
-        public async Task<IEnumerable<BookingDto>> GetPendingBookingsAsync(int pageNumber, int pageSize)
+        public async Task<PagedResultDto<BookingDto>> GetPendingBookingsAsync(int pageNumber, int pageSize)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
             var col = _db.GetCollection<Booking>("Bookings");
+            var totalCount = await col.CountDocumentsAsync(b => b.Status == "Pending");
+
             var list = await col.Find(b => b.Status == "Pending")
                                 .SortByDescending(b => b.CreatedAt)
                                 .Skip((pageNumber - 1) * pageSize)
                                 .Limit(pageSize)
                                 .ToListAsync();
 
-            return list.Select(b => new BookingDto
+            var bookingDtos = list.Select(b => new BookingDto
             {
                 BookingId = b.BookingId,
                 StationId = b.StationId,
@@ -795,28 +797,40 @@ namespace EvBackend.Services
                 FormattedEndTime = FormatSriLankaTime(b.EndTime),
                 FormattedDate = FormatSriLankaDate(b.StartTime),
                 StationName = _stationService.GetStationByIdAsync(b.StationId).Result?.Name,
-                TimeSlotRange = _db.GetCollection<TimeSlot>("TimeSlots").Find(t => t.TimeSlotId == b.TimeSlotId).FirstOrDefault()?.StartTime.ToLocalTime().ToString("hh:mm tt") + " - " +
-                               _db.GetCollection<TimeSlot>("TimeSlots").Find(t => t.TimeSlotId == b.TimeSlotId).FirstOrDefault()?.EndTime.ToLocalTime().ToString("hh:mm tt")
+                TimeSlotRange = _db.GetCollection<TimeSlot>("TimeSlots")
+                    .Find(t => t.TimeSlotId == b.TimeSlotId)
+                    .FirstOrDefault()?.StartTime.ToLocalTime().ToString("hh:mm tt") + " - " +
+                    _db.GetCollection<TimeSlot>("TimeSlots")
+                    .Find(t => t.TimeSlotId == b.TimeSlotId)
+                    .FirstOrDefault()?.EndTime.ToLocalTime().ToString("hh:mm tt")
             });
+
+            return new PagedResultDto<BookingDto>
+            {
+                Items = bookingDtos,
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                CurrentPage = pageNumber,
+                PageSize = pageSize
+            };
         }
 
-        //Task<IEnumerable<BookingDto>> GetPendingBookingsAsync(int pageNumber, int pageSize);
-        // Task<IEnumerable<BookingDto>> GetApprovedBookingsAsync(int pageNumber, int pageSize);
-        // Task<IEnumerable<BookingDto>> GetCompletedBookingsAsync(int pageNumber, int pageSize);
-
-        public async Task<IEnumerable<BookingDto>> GetApprovedBookingsAsync(int pageNumber, int pageSize)
+        public async Task<PagedResultDto<BookingDto>> GetApprovedBookingsAsync(int pageNumber, int pageSize)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
             var col = _db.GetCollection<Booking>("Bookings");
+
+            var totalCount = await col.CountDocumentsAsync(b => b.Status == "Approved");
+
             var list = await col.Find(b => b.Status == "Approved")
                                 .SortBy(b => b.CreatedAt)
                                 .Skip((pageNumber - 1) * pageSize)
                                 .Limit(pageSize)
                                 .ToListAsync();
 
-            return list.Select(b => new BookingDto
+            var bookingDtos = list.Select(b => new BookingDto
             {
                 BookingId = b.BookingId,
                 StationId = b.StationId,
@@ -833,21 +847,33 @@ namespace EvBackend.Services
                 FormattedEndTime = FormatSriLankaTime(b.EndTime),
                 FormattedDate = FormatSriLankaDate(b.StartTime)
             });
+
+            return new PagedResultDto<BookingDto>
+            {
+                Items = bookingDtos,
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                CurrentPage = pageNumber,
+                PageSize = pageSize
+            };
         }
 
-        public async Task<IEnumerable<BookingDto>> GetCompletedBookingsAsync(int pageNumber, int pageSize)
+        public async Task<PagedResultDto<BookingDto>> GetCompletedBookingsAsync(int pageNumber, int pageSize)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
 
             var col = _db.GetCollection<Booking>("Bookings");
+
+            var totalCount = await col.CountDocumentsAsync(b => b.Status == "Finalized" || b.Status == "Completed");
+
             var list = await col.Find(b => b.Status == "Finalized" || b.Status == "Completed")
                                 .SortBy(b => b.CreatedAt)
                                 .Skip((pageNumber - 1) * pageSize)
                                 .Limit(pageSize)
                                 .ToListAsync();
 
-            return list.Select(b => new BookingDto
+            var bookingDtos = list.Select(b => new BookingDto
             {
                 BookingId = b.BookingId,
                 StationId = b.StationId,
@@ -864,6 +890,15 @@ namespace EvBackend.Services
                 FormattedEndTime = FormatSriLankaTime(b.EndTime),
                 FormattedDate = FormatSriLankaDate(b.StartTime)
             });
+
+            return new PagedResultDto<BookingDto>
+            {
+                Items = bookingDtos,
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                CurrentPage = pageNumber,
+                PageSize = pageSize
+            };
         }
 
     }
