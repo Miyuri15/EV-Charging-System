@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { getRequest, patchRequest } from "../../components/common/api";
+import {
+  getRequestWithPagination,
+  patchRequest,
+} from "../../components/common/api";
 import { useNavigate } from "react-router-dom";
 import ConfirmModal from "../../components/common/ConfirmModal";
 
@@ -59,37 +62,64 @@ function BookingManagementPage() {
   >(null);
   const [actionBookingId, setActionBookingId] = useState<string | null>(null);
 
-  const fetchBookings = async (tab: string, page = 1, size = 10) => {
-    setLoading(true);
+  const fetchBookings = async (
+    tab: "pending" | "approved" | "completed",
+    pageNumber = 1,
+    pageSize = 10
+  ) => {
     try {
-      const response = await getRequest(
-        `/bookings/${tab}?pageNumber=${page}&pageSize=${size}`
-      );
+      let endpoint = "";
+      switch (tab) {
+        case "pending":
+          endpoint = "/bookings/pending";
+          break;
+        case "approved":
+          endpoint = "/bookings/approved";
+          break;
+        case "completed":
+          endpoint = "/bookings/completed";
+          break;
+      }
+
+      const response = await getRequestWithPagination<Booking>(endpoint, {
+        pageNumber,
+        pageSize,
+      });
+
       if (response?.data) {
-        const data: PagedResult<Booking> = response.data;
         switch (tab) {
           case "pending":
-            setPending(data);
+            setPending(response.data);
             break;
           case "approved":
-            setApproved(data);
+            setApproved(response.data);
             break;
           case "completed":
-            setCompleted(data);
+            setCompleted(response.data);
             break;
         }
       }
+      return response?.data;
     } catch (error) {
       console.error(`Error fetching ${tab} bookings:`, error);
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchBookings("pending");
-    fetchBookings("approved");
-    fetchBookings("completed");
+    const loadAll = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          fetchBookings("pending"),
+          fetchBookings("approved"),
+          fetchBookings("completed"),
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAll();
   }, []);
 
   const activeBookings = useMemo(() => {
@@ -151,8 +181,12 @@ function BookingManagementPage() {
     setActionBookingId(null);
   };
 
-  const handlePageChange = (tab: string, page: number) => {
-    fetchBookings(tab, page);
+  const handlePageChange = (
+    tab: "pending" | "approved" | "completed",
+    page: number
+  ) => {
+    setLoading(true);
+    fetchBookings(tab, page).finally(() => setLoading(false));
   };
 
   const getStatusBadge = (status: string) => {
@@ -384,12 +418,28 @@ function BookingManagementPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Booking Management
-          </h1>
-          <p className="text-gray-600">
-            Manage and review all booking requests
-          </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Booking Management
+              </h1>
+              <p className="text-gray-600">
+                Manage and review all booking requests
+              </p>
+            </div>
+
+            <div className="mt-1">
+              <button
+                onClick={() => {
+                  setActiveTab("pending");
+                  navigate("/admin/bookings/pending");
+                }}
+                className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+              >
+                View Pending Bookings
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Stats Overview */}
@@ -475,12 +525,12 @@ function BookingManagementPage() {
           </div>
         </div>
 
+        <TabNavigation />
+
         {loading ? (
           <LoadingSpinner />
         ) : (
           <>
-            <TabNavigation />
-
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {activeBookings.length === 0 ? (
                 <div className="col-span-full text-center py-12">

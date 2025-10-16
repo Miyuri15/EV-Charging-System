@@ -1,13 +1,39 @@
 import { useState, useEffect } from "react";
-import { getRequest, patchRequest } from "../../components/common/api";
+import {
+  getRequestWithPagination,
+  patchRequest,
+} from "../../components/common/api";
 import { useNavigate } from "react-router-dom";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import formatTime from "../../components/common/formatTime";
 
+interface Booking {
+  bookingId: string;
+  ownerId?: string;
+  stationName?: string;
+  startTime?: string;
+  endTime?: string;
+  createdAt: string | Date;
+}
+
+interface PagedResult<T> {
+  items: T[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}
+
 function PendingBookingsPage() {
   const navigate = useNavigate();
 
-  const [pendingBookings, setPendingBookings] = useState([]);
+  const [pendingBookings, setPendingBookings] = useState<PagedResult<Booking>>({
+    items: [],
+    totalCount: 0,
+    totalPages: 0,
+    currentPage: 1,
+    pageSize: 10,
+  });
   const [loading, setLoading] = useState(true);
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -17,12 +43,18 @@ function PendingBookingsPage() {
   const [actionBookingId, setActionBookingId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // Fetch pending bookings
-  const fetchPendingBookings = async () => {
+  // Fetch pending bookings with pagination
+  const fetchPendingBookings = async (pageNumber = 1, pageSize = 10) => {
     setLoading(true);
     try {
-      const response = await getRequest("/bookings/pending");
-      if (response) setPendingBookings(response.data);
+      const response = await getRequestWithPagination<Booking>(
+        "/bookings/pending",
+        {
+          pageNumber,
+          pageSize,
+        }
+      );
+      if (response?.data) setPendingBookings(response.data);
     } catch (error) {
       console.error("Error fetching pending bookings:", error);
     } finally {
@@ -63,7 +95,10 @@ function PendingBookingsPage() {
         throw new Error(`Failed to ${currentAction} booking`);
       }
 
-      await fetchPendingBookings();
+      await fetchPendingBookings(
+        pendingBookings.currentPage,
+        pendingBookings.pageSize
+      );
     } catch (error) {
       console.error(`Error ${currentAction} booking:`, error);
     } finally {
@@ -80,6 +115,10 @@ function PendingBookingsPage() {
     setActionBookingId(null);
   };
 
+  const handlePageChange = (page: number) => {
+    fetchPendingBookings(page, pendingBookings.pageSize);
+  };
+
   // Loading Spinner
   const LoadingSpinner = () => (
     <div className="flex justify-center items-center py-20">
@@ -89,90 +128,126 @@ function PendingBookingsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h2 className="text-3xl font-semibold text-gray-800">Pending Bookings</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-semibold text-gray-800">
+          Pending Bookings
+        </h2>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">Total pending</span>
+          <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-gray-800 font-medium">
+            {pendingBookings.totalCount}
+          </span>
+        </div>
+      </div>
 
       {loading ? (
         <LoadingSpinner />
-      ) : pendingBookings.length === 0 ? (
+      ) : pendingBookings.items.length === 0 ? (
         <p className="text-gray-500">No pending bookings available.</p>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {pendingBookings.map((booking) => (
-            <div
-              key={booking.bookingId}
-              className="bg-white shadow-lg rounded-lg p-6 hover:shadow-xl transition-all flex flex-col justify-between"
-            >
-              {/* Booking Header */}
-              <div className="flex justify-between items-center mb-4">
-                <p className="text-lg font-semibold text-gray-700">
-                  {booking.bookingId || "N/A"}
-                </p>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleApproveBooking(booking.bookingId)}
-                    className="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-all text-sm"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => handleCancelBooking(booking.bookingId)}
-                    className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition-all text-sm"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-
-              {/* Booking Details */}
-              <div className="space-y-2 text-sm text-gray-600">
-                <div className="flex justify-between">
-                  <span>Owner Id:</span>
-                  <span className="font-semibold">
-                    {booking.ownerId || "N/A"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Station:</span>
-                  <span className="font-semibold">
-                    {booking.stationName || "N/A"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Time Slot:</span>
-                  <span className="font-semibold">
-                    {booking.startTime && booking.endTime
-                      ? `${formatTime(booking.startTime)} - ${formatTime(
-                          booking.endTime
-                        )}`
-                      : ""}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Created At:</span>
-                  <span className="font-semibold">
-                    {new Date(booking.createdAt).toLocaleString("en-US", {
-                      timeZone: "Asia/Colombo",
-                      year: "numeric",
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: false,
-                    })}
-                  </span>
-                </div>
-              </div>
-
-              {/* View Details Button */}
-              <button
-                onClick={() => navigate(`/admin/bookings/${booking.bookingId}`)}
-                className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all"
+        <>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {pendingBookings.items.map((booking) => (
+              <div
+                key={booking.bookingId}
+                className="bg-white shadow-lg rounded-lg p-6 hover:shadow-xl transition-all flex flex-col justify-between"
               >
-                View Details
-              </button>
+                {/* Booking Header */}
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-lg font-semibold text-gray-700">
+                    {booking.bookingId || "N/A"}
+                  </p>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleApproveBooking(booking.bookingId)}
+                      className="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-all text-sm"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleCancelBooking(booking.bookingId)}
+                      className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition-all text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+
+                {/* Booking Details */}
+                <div className="space-y-2 text-sm text-gray-600">
+                  <div className="flex justify-between">
+                    <span>Owner Id:</span>
+                    <span className="font-semibold">
+                      {booking.ownerId || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Station:</span>
+                    <span className="font-semibold">
+                      {booking.stationName || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Time Slot:</span>
+                    <span className="font-semibold">
+                      {booking.startTime && booking.endTime
+                        ? `${formatTime(booking.startTime)} - ${formatTime(
+                            booking.endTime
+                          )}`
+                        : ""}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Created At:</span>
+                    <span className="font-semibold">
+                      {new Date(booking.createdAt).toLocaleString("en-US", {
+                        timeZone: "Asia/Colombo",
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* View Details Button */}
+                <button
+                  onClick={() =>
+                    navigate(`/admin/bookings/${booking.bookingId}`)
+                  }
+                  className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all"
+                >
+                  View Details
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {pendingBookings.totalPages > 1 && (
+            <div className="flex justify-center mt-6 space-x-2">
+              {Array.from(
+                { length: pendingBookings.totalPages },
+                (_, i) => i + 1
+              ).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  className={`px-3 py-1 rounded-md border ${
+                    page === pendingBookings.currentPage
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-gray-700"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       {showConfirmModal && (
