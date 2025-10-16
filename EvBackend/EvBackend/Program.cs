@@ -94,7 +94,6 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1"
     });
     //  Enable Swagger Annotations
-    c.EnableAnnotations();
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
