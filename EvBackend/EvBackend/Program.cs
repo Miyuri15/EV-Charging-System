@@ -93,8 +93,6 @@ builder.Services.AddSwaggerGen(c =>
         Title = "EV Backend API",
         Version = "v1"
     });
-    //  Enable Swagger Annotations
-    c.EnableAnnotations();
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -194,6 +192,7 @@ builder.Services.AddCors(options =>
 // ---------------------------------------------------------
 builder.Services.AddSingleton<TimeSlotSchedulerService>();
 builder.Services.AddHostedService<DailyTimeSlotWorker>();
+builder.Services.AddHostedService<TimeSlotExpiredStatusHostedService>();
 
 // ---------------------------------------------------------
 // SignalR

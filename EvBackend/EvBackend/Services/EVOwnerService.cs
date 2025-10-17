@@ -30,7 +30,7 @@ namespace EvBackend.Services
         }
 
         // Activate or Deactivate by backoffice (admin)
-        public async Task<bool> ChangeEVOwnerStatus(string nic, bool isActive)
+        public async Task<bool> ChangeEVOwnerStatus(string nic, bool isActive, IBookingService bookingService)
         {
             var updateBuilder = Builders<EVOwner>.Update;
             UpdateDefinition<EVOwner> update;
@@ -44,6 +44,13 @@ namespace EvBackend.Services
             }
             else
             {
+                //check if there is existing booking
+                var hasActiveBooking = await bookingService.HasActiveBookingAsync(nic);
+                if (hasActiveBooking)
+                {
+                    throw new InvalidOperationException("You cannot deactivate your account while you have active bookings.");
+                }
+
                 // When deactivating, just set active to false (keep reactivation request as is)
                 update = updateBuilder.Set(o => o.IsActive, false);
             }

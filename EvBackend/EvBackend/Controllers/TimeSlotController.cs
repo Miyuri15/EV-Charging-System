@@ -10,7 +10,6 @@
 using Microsoft.AspNetCore.Mvc;
 using EvBackend.Services;
 using System.Threading.Tasks;
-using Swashbuckle.AspNetCore.Annotations; // ✅ Required for Swagger annotations
 using Microsoft.AspNetCore.Authorization;
 
 namespace EvBackend.Controllers
@@ -42,11 +41,6 @@ namespace EvBackend.Controllers
         /// <response code="500">Internal server error occurred during execution.</response>
         [HttpPost("sync")]
         [Authorize(Roles = "Admin")] // ✅ Restrict access to Admins
-        [SwaggerOperation(
-            Summary = "Clean up old time slots & generate next day's schedule",
-            Description = "Deletes expired time slots and adds new ones to maintain 7-day rolling availability.",
-            OperationId = "SyncTimeSlots"
-        )]
         public async Task<IActionResult> SyncTimeSlots()
         {
             await _scheduler.CleanupAndGenerateNextDayAsync();
@@ -73,6 +67,24 @@ namespace EvBackend.Controllers
 
             return Ok(results);
         }
+
+        [HttpGet("available")]
+        [Authorize]
+        public async Task<IActionResult> GetAvailableTimeSlots(
+            [FromQuery] string stationId,
+            [FromQuery] string slotId,
+            [FromQuery] DateTime date)
+        {
+            if (string.IsNullOrEmpty(stationId) || string.IsNullOrEmpty(slotId))
+                return BadRequest(new { message = "stationId and slotId are required" });
+
+            var results = await _scheduler.GetAvailableTimeSlotsAsync(stationId, slotId, date);
+            if (!results.Any())
+                return NotFound(new { message = "No available time slots found for the given date" });
+
+            return Ok(results);
+        }
+
 
     }
 }

@@ -19,6 +19,7 @@ import com.evcharging.mobile.model.TimeSlotItem;
 import com.evcharging.mobile.network.ApiClient;
 import com.evcharging.mobile.network.ApiResponse;
 import com.evcharging.mobile.session.SessionManager;
+import com.evcharging.mobile.utils.DialogUtils;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -295,7 +296,7 @@ public class UpdateBookingActivity extends AppCompatActivity {
             @Override
             protected ApiResponse doInBackground(Void... voids) {
                 try {
-                    String endpoint = String.format("/timeslot?stationId=%s&slotId=%s&date=%s",
+                    String endpoint = String.format("/timeslot/available?stationId=%s&slotId=%s&date=%s",
                             currentBooking.getStationId(), slotId, selectedDateStr);
                     return apiClient.get(endpoint);
                 } catch (Exception e) {
@@ -410,7 +411,7 @@ public class UpdateBookingActivity extends AppCompatActivity {
                     String errorMsg = res != null ? res.getMessage() : "Network error";
                     Toast.makeText(UpdateBookingActivity.this, "Update failed: " + errorMsg, Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(UpdateBookingActivity.this, "Booking updated successfully", Toast.LENGTH_SHORT).show();
+                    DialogUtils.showToast(UpdateBookingActivity.this, "Booking updated successfully");
 
                     // Fetch the updated booking details and return it
                     fetchUpdatedBooking();

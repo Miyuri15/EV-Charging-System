@@ -29,6 +29,8 @@ public class OperatorProfileActivity extends AppCompatActivity {
         setContentView(R.layout.activity_operator_profile);
         setTitle("Operator Profile");
 
+        FooterHelper.setupFooter(this);
+
         session = new SessionManager(this);
         apiClient = new ApiClient(session);
 
