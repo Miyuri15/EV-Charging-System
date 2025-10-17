@@ -4,7 +4,9 @@ import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -26,6 +28,7 @@ public class AllBookingsActivity extends AppCompatActivity {
     private SessionManager session;
     private ListView lvAllBookings;
     private SwipeRefreshLayout srAllBookings;
+    private LinearLayout emptyAllBookings; // Add this
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,13 +42,15 @@ public class AllBookingsActivity extends AppCompatActivity {
         session = new SessionManager(this);
         lvAllBookings = findViewById(R.id.lvAllBookings);
         srAllBookings = findViewById(R.id.srAllBookings);
+        emptyAllBookings = findViewById(R.id.emptyAllBookings); // Initialize this
 
         ImageButton btnBack = findViewById(R.id.btnBack);
         btnBack.setOnClickListener(v -> finish());
 
         srAllBookings.setOnRefreshListener(this::loadUpcomingBookings);
 
-        loadUpcomingBookings();
+        // Show empty state initially
+        showEmptyAllBookings();
     }
 
     @Override
@@ -54,11 +59,26 @@ public class AllBookingsActivity extends AppCompatActivity {
         loadUpcomingBookings();
     }
 
+    private void showEmptyAllBookings() {
+        if (lvAllBookings != null && emptyAllBookings != null) {
+            lvAllBookings.setVisibility(View.GONE);
+            emptyAllBookings.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void showAllBookingsList() {
+        if (lvAllBookings != null && emptyAllBookings != null) {
+            lvAllBookings.setVisibility(View.VISIBLE);
+            emptyAllBookings.setVisibility(View.GONE);
+        }
+    }
+
     private void loadUpcomingBookings() {
         User user = session.getLoggedInUser();
         if (user == null || user.getStationId() == null) {
             Toast.makeText(this, "No station assigned", Toast.LENGTH_SHORT).show();
             srAllBookings.setRefreshing(false);
+            showEmptyAllBookings();
             return;
         }
 
@@ -76,7 +96,7 @@ public class AllBookingsActivity extends AppCompatActivity {
                 srAllBookings.setRefreshing(false);
 
                 if (response == null || !response.isSuccess() || response.getData() == null) {
-                    Toast.makeText(AllBookingsActivity.this, "No upcoming bookings found", Toast.LENGTH_SHORT).show();
+                    showEmptyAllBookings();
                     return;
                 }
 
@@ -88,6 +108,12 @@ public class AllBookingsActivity extends AppCompatActivity {
                         bookings.add(jsonArray.getJSONObject(i));
                     }
 
+                    if (bookings.isEmpty()) {
+                        showEmptyAllBookings();
+                        return;
+                    }
+
+                    showAllBookingsList();
                     BookingAdapter adapter = new BookingAdapter(AllBookingsActivity.this, bookings);
                     lvAllBookings.setAdapter(adapter);
 
@@ -108,6 +134,7 @@ public class AllBookingsActivity extends AppCompatActivity {
                 } catch (Exception e) {
                     Log.e("ALL_BOOKINGS", "Parse error: " + e.getMessage());
                     Toast.makeText(AllBookingsActivity.this, "Error loading bookings", Toast.LENGTH_SHORT).show();
+                    showEmptyAllBookings();
                 }
             }
         }.execute();
