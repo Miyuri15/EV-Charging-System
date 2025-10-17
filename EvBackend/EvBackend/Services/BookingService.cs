@@ -519,14 +519,13 @@ namespace EvBackend.Services
         {
             var bookingCol = _db.GetCollection<Booking>("Bookings");
             var tz = GetSriLankaTz();
-
             var nowSL = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
 
             FilterDefinition<Booking> filter;
 
             if (todayOnly)
             {
-                // --- TODAY range in Sri Lanka Time ---
+                // ---- TODAY range in Sri Lanka Time ----
                 var startSL = new DateTime(nowSL.Year, nowSL.Month, nowSL.Day, 0, 0, 0);
                 var endSL = startSL.AddDays(1).AddTicks(-1);
 
@@ -542,14 +541,18 @@ namespace EvBackend.Services
             }
             else
             {
-                // --- FUTURE range (from tomorrow onwards) ---
+                // ---- Next 7 days (excluding today) ----
                 var startSL = nowSL.AddDays(1).Date;
+                var endSL = startSL.AddDays(7).AddTicks(-1);
+
                 var startUtc = TimeZoneInfo.ConvertTimeToUtc(startSL, tz);
+                var endUtc = TimeZoneInfo.ConvertTimeToUtc(endSL, tz);
 
                 filter = Builders<Booking>.Filter.And(
                     Builders<Booking>.Filter.Eq(b => b.StationId, stationId),
                     Builders<Booking>.Filter.Eq(b => b.Status, "Approved"),
-                    Builders<Booking>.Filter.Gte(b => b.StartTime, startUtc)
+                    Builders<Booking>.Filter.Gte(b => b.StartTime, startUtc),
+                    Builders<Booking>.Filter.Lte(b => b.StartTime, endUtc)
                 );
             }
 
@@ -560,12 +563,15 @@ namespace EvBackend.Services
         public async Task<IEnumerable<BookingDto>> GetUpcomingApprovedBookingsAsync(string stationId)
         {
             var bookingCol = _db.GetCollection<Booking>("Bookings");
-
             var tz = GetSriLankaTz();
             var nowSL = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
 
-            var startUtc = TimeZoneInfo.ConvertTimeToUtc(nowSL.AddDays(1).Date, tz);
-            var endUtc = TimeZoneInfo.ConvertTimeToUtc(nowSL.AddDays(4).Date.AddTicks(-1), tz);
+            // ---- Next 7 days (excluding today) ----
+            var startSL = nowSL.AddDays(1).Date;
+            var endSL = startSL.AddDays(7).AddTicks(-1);
+
+            var startUtc = TimeZoneInfo.ConvertTimeToUtc(startSL, tz);
+            var endUtc = TimeZoneInfo.ConvertTimeToUtc(endSL, tz);
 
             var filter = Builders<Booking>.Filter.And(
                 Builders<Booking>.Filter.Eq(b => b.StationId, stationId),
@@ -575,7 +581,6 @@ namespace EvBackend.Services
             );
 
             var list = await bookingCol.Find(filter).SortBy(b => b.StartTime).ToListAsync();
-
             var bookingDtos = new List<BookingDto>();
 
             foreach (var b in list)
@@ -907,6 +912,17 @@ namespace EvBackend.Services
                 CurrentPage = pageNumber,
                 PageSize = pageSize
             };
+        }
+
+        public async Task<bool> HasActiveBookingAsync(string ownerId)
+        {
+            var bookingCol = _db.GetCollection<Booking>("Bookings");
+
+            // Check if there are any active bookings for the EV owner
+            var activeBooking = await bookingCol.Find(b => b.OwnerId == ownerId && (b.Status == "Approved" || b.Status == "Charging"))
+                                                 .FirstOrDefaultAsync();
+
+            return activeBooking != null;
         }
 
     }

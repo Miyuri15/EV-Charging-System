@@ -113,7 +113,7 @@ namespace EvBackend.Controllers
         // Deactivate self(owner)
         [HttpPatch("{nic}/deactivate")]
         [Authorize(Roles = "Owner")]
-        public async Task<IActionResult> DeactivateSelf(string nic)
+        public async Task<IActionResult> DeactivateSelf(string nic, [FromServices] IBookingService _bookingService)
         {
             var userNic = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!string.Equals(userNic, nic, StringComparison.OrdinalIgnoreCase))
@@ -123,9 +123,13 @@ namespace EvBackend.Controllers
             {
                 // First clear any existing reactivation request when user deactivates themselves
                 await _evOwnerService.ClearReactivationRequest(nic);
-                var ok = await _evOwnerService.ChangeEVOwnerStatus(nic, false);
+                var ok = await _evOwnerService.ChangeEVOwnerStatus(nic, false, _bookingService);
                 if (!ok) return NotFound(new { message = "EV Owner not found." });
                 return Ok(new { message = "Account deactivated." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -136,7 +140,7 @@ namespace EvBackend.Controllers
         // Activate by backoffice (admin)
         [HttpPatch("{nic}/activate")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> ActivateByBackoffice(string nic)
+        public async Task<IActionResult> ActivateByBackoffice(string nic, [FromServices] IBookingService _bookingService)
         {
             try
             {
@@ -147,7 +151,7 @@ namespace EvBackend.Controllers
                 if (owner.IsActive)
                     return BadRequest(new { message = "Account is already active." });
 
-                var ok = await _evOwnerService.ChangeEVOwnerStatus(nic, true);
+                var ok = await _evOwnerService.ChangeEVOwnerStatus(nic, true, _bookingService);
                 if (!ok)
                     return BadRequest(new { message = "Failed to activate account." });
 

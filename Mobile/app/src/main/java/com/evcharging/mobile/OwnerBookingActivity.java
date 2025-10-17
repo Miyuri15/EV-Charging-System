@@ -603,7 +603,7 @@ public class OwnerBookingActivity extends AppCompatActivity {
             @Override
             protected ApiResponse doInBackground(Void... voids) {
                 try {
-                    String endpoint = String.format("/timeslot?stationId=%s&slotId=%s&date=%s", stationId, slotId,
+                    String endpoint = String.format("/timeslot/available?stationId=%s&slotId=%s&date=%s", stationId, slotId,
                             dateYmd);
                     return apiClient.get(endpoint);
                 } catch (Exception e) {
