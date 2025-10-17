@@ -43,16 +43,42 @@ function PendingBookingsPage() {
   const [actionBookingId, setActionBookingId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Filters
+  const [filters, setFilters] = useState({
+    bookingId: "",
+    stationName: "",
+    date: "",
+  });
+
+  const handleFilterChange = (field: keyof typeof filters, value: string) => {
+    setFilters((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleApplyFilters = async () => {
+    await fetchPendingBookings(1, pendingBookings.pageSize);
+  };
+
+  const handleClearFilters = async () => {
+    setFilters({ bookingId: "", stationName: "", date: "" });
+    await fetchPendingBookings(1, pendingBookings.pageSize);
+  };
+
   // Fetch pending bookings with pagination
   const fetchPendingBookings = async (pageNumber = 1, pageSize = 10) => {
     setLoading(true);
     try {
+      // include filters when fetching
+      const queryParams: any = {
+        pageNumber,
+        pageSize,
+      };
+      if (filters.bookingId) queryParams.bookingId = filters.bookingId;
+      if (filters.stationName) queryParams.stationName = filters.stationName;
+      if (filters.date) queryParams.date = filters.date;
+
       const response = await getRequestWithPagination<Booking>(
         "/bookings/pending",
-        {
-          pageNumber,
-          pageSize,
-        }
+        queryParams
       );
       if (response?.data) setPendingBookings(response.data);
     } catch (error) {
@@ -65,6 +91,12 @@ function PendingBookingsPage() {
   useEffect(() => {
     fetchPendingBookings();
   }, []);
+
+  // Helper to clear single filter
+  const handleClearSingleFilter = async (field: keyof typeof filters) => {
+    setFilters((prev) => ({ ...prev, [field]: "" }));
+    await fetchPendingBookings(1, pendingBookings.pageSize);
+  };
 
   const handleApproveBooking = (bookingId: string) => {
     setActionBookingId(bookingId);
@@ -142,6 +174,55 @@ function PendingBookingsPage() {
     });
   };
 
+  // Render active filters badges
+  const ActiveFilters = () => {
+    const hasAny = filters.bookingId || filters.stationName || filters.date;
+    if (!hasAny) return null;
+    return (
+      <div className="mt-4 flex flex-wrap gap-2">
+        {filters.bookingId && (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            Booking ID: {filters.bookingId}
+            <button
+              onClick={() => handleClearSingleFilter("bookingId")}
+              className="ml-2 hover:text-blue-600 font-bold"
+            >
+              ×
+            </button>
+          </span>
+        )}
+        {filters.stationName && (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            Station: {filters.stationName}
+            <button
+              onClick={() => handleClearSingleFilter("stationName")}
+              className="ml-2 hover:text-green-600 font-bold"
+            >
+              ×
+            </button>
+          </span>
+        )}
+        {filters.date && (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+            Date: {filters.date}
+            <button
+              onClick={() => handleClearSingleFilter("date")}
+              className="ml-2 hover:text-purple-600 font-bold"
+            >
+              ×
+            </button>
+          </span>
+        )}
+        <button
+          onClick={handleClearFilters}
+          className="ml-2 px-3 py-1 rounded-full text-xs bg-gray-200 text-gray-700"
+        >
+          Clear All
+        </button>
+      </div>
+    );
+  };
+
   // Loading Spinner
   const LoadingSpinner = () => (
     <div className="flex justify-center items-center py-20">
@@ -161,6 +242,60 @@ function PendingBookingsPage() {
             {pendingBookings.totalCount}
           </span>
         </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">
+              Booking ID
+            </label>
+            <input
+              type="text"
+              value={filters.bookingId}
+              onChange={(e) => handleFilterChange("bookingId", e.target.value)}
+              placeholder="Search by Booking ID"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">Station</label>
+            <input
+              type="text"
+              value={filters.stationName}
+              onChange={(e) =>
+                handleFilterChange("stationName", e.target.value)
+              }
+              placeholder="Search by Station"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">Date</label>
+            <input
+              type="date"
+              value={filters.date}
+              onChange={(e) => handleFilterChange("date", e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <button
+              onClick={handleApplyFilters}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg"
+            >
+              Apply
+            </button>
+            <button
+              onClick={handleClearFilters}
+              className="bg-gray-500 text-white px-4 py-2 rounded-lg"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+        <ActiveFilters />
       </div>
 
       {loading ? (
