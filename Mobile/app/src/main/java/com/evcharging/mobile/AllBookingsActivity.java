@@ -100,6 +100,8 @@ public class AllBookingsActivity extends AppCompatActivity {
                         intent.putExtra("formattedEndTime", obj.optString("formattedEndTime", obj.optString("endTime")));
                         intent.putExtra("qrImageBase64", obj.optString("qrImageBase64"));
                         intent.putExtra("qrCode", obj.optString("qrCode"));
+                        intent.putExtra("ownerName", obj.optString("ownerName"));
+                        intent.putExtra("slotNumber", obj.optInt("slotNumber"));
                         startActivity(intent);
                     });
 
