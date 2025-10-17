@@ -12,6 +12,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using EvBackend.Services.Interfaces;
 using EvBackend.Models.DTOs;
+using MongoDB.Driver;
+using EvBackend.Entities;
+
 
 namespace EvBackend.Controllers
 {
@@ -20,10 +23,12 @@ namespace EvBackend.Controllers
     public class BookingController : ControllerBase
     {
         private readonly IBookingService _booking;
+        private readonly IMongoDatabase _db;
 
-        public BookingController(IBookingService bookingService)
+        public BookingController(IBookingService bookingService,IMongoDatabase db)
         {
             _booking = bookingService;
+            _db = db;
         }
 
         // ---------------------------
@@ -359,5 +364,108 @@ namespace EvBackend.Controllers
             }
             catch (Exception ex) { Console.WriteLine(ex); return StatusCode(500, new { message = "Unexpected error" }); }
         }
+
+         // ---------------------------
+        // Booking Expiration
+        // ---------------------------
+
+
+        // Add this method to your BookingController class
+[HttpPost("force-expire-check")]
+[Authorize(Roles = "Admin")]
+public async Task<IActionResult> ForceExpireCheck()
+{
+    try
+    {
+        // We need to implement ExpireOldBookingsAsync in the service first
+        // For now, let's create a simple version that does the same as the background service
+        var bookingCol = _db.GetCollection<Booking>("Bookings");
+        var timeSlotCol = _db.GetCollection<TimeSlot>("TimeSlots");
+        
+        var nowUtc = DateTime.UtcNow;
+        
+        // Find bookings that should be expired
+        var filter = Builders<Booking>.Filter.And(
+            Builders<Booking>.Filter.In(b => b.Status, new[] { "Pending", "Approved" }),
+            Builders<Booking>.Filter.Lt(b => b.EndTime, nowUtc),
+            Builders<Booking>.Filter.Eq(b => b.IsExpired, false)
+        );
+
+        var expiredBookings = await bookingCol.Find(filter).ToListAsync();
+        var expiredCount = 0;
+
+        foreach (var booking in expiredBookings)
+        {
+            using var session = await _db.Client.StartSessionAsync();
+            session.StartTransaction();
+
+            try
+            {
+                // Update booking status to expired
+                var bookingUpdate = Builders<Booking>.Update
+                    .Set(b => b.Status, "Expired")
+                    .Set(b => b.IsExpired, true)
+                    .Set(b => b.ExpiredAt, nowUtc)
+                    .Set(b => b.UpdatedAt, nowUtc);
+
+                await bookingCol.UpdateOneAsync(
+                    session,
+                    Builders<Booking>.Filter.Eq(b => b.BookingId, booking.BookingId),
+                    bookingUpdate
+                );
+
+                // Free up the timeslot
+                await timeSlotCol.UpdateOneAsync(
+                    session,
+                    Builders<TimeSlot>.Filter.Eq(t => t.TimeSlotId, booking.TimeSlotId),
+                    Builders<TimeSlot>.Update.Set(t => t.Status, "Available")
+                );
+
+                await session.CommitTransactionAsync();
+                expiredCount++;
+            }
+            catch (Exception ex)
+            {
+                await session.AbortTransactionAsync();
+                Console.WriteLine($"Failed to expire booking {booking.BookingId}: {ex.Message}");
+            }
+        }
+
+        return Ok(new { 
+            message = $"Manual expiration check completed",
+            expiredCount = expiredCount,
+            timestamp = DateTime.UtcNow,
+            sriLankaTime = ConvertUtcToSriLankaTime(DateTime.UtcNow).ToString("yyyy-MM-dd HH:mm:ss")
+        });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine(ex);
+        return StatusCode(500, new { message = "Unexpected error while expiring bookings" });
+    }
+}
+
+
+        private static DateTime ConvertUtcToSriLankaTime(DateTime utcTime)
+        {
+            try
+            {
+                var sriLankaTz = TimeZoneInfo.FindSystemTimeZoneById("Sri Lanka Standard Time");
+                return TimeZoneInfo.ConvertTimeFromUtc(utcTime, sriLankaTz);
+            }
+            catch
+            {
+                try
+                {
+                    var sriLankaTz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Colombo");
+                    return TimeZoneInfo.ConvertTimeFromUtc(utcTime, sriLankaTz);
+                }
+                catch
+                {
+                    return utcTime.AddHours(5.5);
+                }
+            }
+        }
+
     }
 }

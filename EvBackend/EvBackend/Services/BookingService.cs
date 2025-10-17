@@ -925,5 +925,65 @@ namespace EvBackend.Services
             return activeBooking != null;
         }
 
+        //Booking Expiration Method
+
+      
+        public async Task<int> ExpireOldBookingsAsync()
+        {
+            var bookingCol = _db.GetCollection<Booking>("Bookings");
+            var timeSlotCol = _db.GetCollection<TimeSlot>("TimeSlots");
+            
+            var now = DateTime.UtcNow;
+            
+            var filter = Builders<Booking>.Filter.And(
+                Builders<Booking>.Filter.In(b => b.Status, new[] { "Pending", "Approved" }),
+                Builders<Booking>.Filter.Lt(b => b.EndTime, now),
+                Builders<Booking>.Filter.Eq(b => b.IsExpired, false)
+            );
+
+            var expiredBookings = await bookingCol.Find(filter).ToListAsync();
+            var expiredCount = 0;
+
+            foreach (var booking in expiredBookings)
+            {
+                using var session = await _db.Client.StartSessionAsync();
+                session.StartTransaction();
+
+                try
+                {
+                    // Update booking
+                    var bookingUpdate = Builders<Booking>.Update
+                        .Set(b => b.Status, "Expired")
+                        .Set(b => b.IsExpired, true)
+                        .Set(b => b.ExpiredAt, now)
+                        .Set(b => b.UpdatedAt, now);
+
+                    await bookingCol.UpdateOneAsync(
+                        session,
+                        Builders<Booking>.Filter.Eq(b => b.BookingId, booking.BookingId),
+                        bookingUpdate
+                    );
+
+                    // Free timeslot
+                    await timeSlotCol.UpdateOneAsync(
+                        session,
+                        Builders<TimeSlot>.Filter.Eq(t => t.TimeSlotId, booking.TimeSlotId),
+                        Builders<TimeSlot>.Update.Set(t => t.Status, "Available")
+                    );
+
+                    await session.CommitTransactionAsync();
+                    expiredCount++;
+                }
+                catch (Exception ex)
+                {
+                    await session.AbortTransactionAsync();
+                    // Log error but continue with other bookings
+                    Console.WriteLine($"Error expiring booking {booking.BookingId}: {ex.Message}");
+                }
+            }
+
+            return expiredCount;
+        }
+
     }
 }

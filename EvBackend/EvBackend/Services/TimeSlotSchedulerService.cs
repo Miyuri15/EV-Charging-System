@@ -195,5 +195,33 @@ namespace EvBackend.Services
                 _logger.LogError(ex, "Error updating expired timeslots to 'Available'.");
             }
         }
+
+       
+        public async Task<IEnumerable<TimeSlot>> GetAvailableTimeSlotsAsync(string stationId, string slotId, DateTime date)
+        {
+            try
+            {
+                var startOfDay = date.Date.ToUniversalTime();
+                var endOfDay = startOfDay.AddDays(1);
+
+                var filter = Builders<TimeSlot>.Filter.Eq(t => t.StationId, stationId)
+                            & Builders<TimeSlot>.Filter.Eq(t => t.SlotId, slotId)
+                            & Builders<TimeSlot>.Filter.Gte(t => t.StartTime, startOfDay)
+                            & Builders<TimeSlot>.Filter.Lt(t => t.StartTime, endOfDay)
+                            & Builders<TimeSlot>.Filter.Eq(t => t.Status, "Available");
+
+                var result = await _timeSlots.Find(filter)
+                                            .SortBy(t => t.StartTime)
+                                            .ToListAsync();
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting available time slots for station {StationId}, slot {SlotId}, date {Date}", 
+                    stationId, slotId, date);
+                throw;
+            }
+        }
     }
 }

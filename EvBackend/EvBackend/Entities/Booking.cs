@@ -39,6 +39,12 @@ namespace EvBackend.Entities
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         public string? CancellationReason { get; set; }   // e.g. "Slot set to Out Of Order"
-        public string? CancelledBy { get; set; }          // e.g. "System"
+        public string? CancelledBy { get; set; }   
+        
+         [BsonElement("IsExpired")]
+        public bool IsExpired { get; set; } = false;
+        
+        [BsonElement("ExpiredAt")]
+        public DateTime? ExpiredAt { get; set; }
     }
 }
