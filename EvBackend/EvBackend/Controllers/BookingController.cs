@@ -317,13 +317,18 @@ namespace EvBackend.Controllers
 
         [HttpGet("pending")]
         [Authorize(Roles = "Admin,Operator")]
-        public async Task<IActionResult> GetPendingBookings([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetPendingBookings(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string bookingId = null,
+            [FromQuery] string stationName = null,
+            [FromQuery] string date = null)
         {
             if (pageNumber <= 0 || pageSize <= 0 || pageSize > 100)
                 return BadRequest(new { message = "Invalid pagination parameters" });
             try
             {
-                var list = await _booking.GetPendingBookingsAsync(pageNumber, pageSize);
+                var list = await _booking.GetPendingBookingsAsync(pageNumber, pageSize, bookingId, stationName, date);
                 return Ok(list);
             }
             catch (Exception ex)
@@ -334,13 +339,18 @@ namespace EvBackend.Controllers
 
         [HttpGet("approved")]
         [Authorize(Roles = "Admin,Operator")]
-        public async Task<IActionResult> GetApprovedBookings([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetApprovedBookings(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string bookingId = null,
+            [FromQuery] string stationName = null,
+            [FromQuery] string date = null)
         {
             if (pageNumber <= 0 || pageSize <= 0 || pageSize > 100)
                 return BadRequest(new { message = "Invalid pagination parameters" });
             try
             {
-                var list = await _booking.GetApprovedBookingsAsync(pageNumber, pageSize);
+                var list = await _booking.GetApprovedBookingsAsync(pageNumber, pageSize, bookingId, stationName, date);
                 return Ok(list);
             }
             catch (Exception ex) { Console.WriteLine(ex); return StatusCode(500, new { message = "Unexpected error" }); }
@@ -348,13 +358,18 @@ namespace EvBackend.Controllers
 
         [HttpGet("completed")]
         [Authorize(Roles = "Admin,Operator")]
-        public async Task<IActionResult> GetCompletedBookings([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetCompletedBookings(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string bookingId = null,
+            [FromQuery] string stationName = null,
+            [FromQuery] string date = null)
         {
             if (pageNumber <= 0 || pageSize <= 0 || pageSize > 100)
                 return BadRequest(new { message = "Invalid pagination parameters" });
             try
             {
-                var list = await _booking.GetCompletedBookingsAsync(pageNumber, pageSize);
+                var list = await _booking.GetCompletedBookingsAsync(pageNumber, pageSize, bookingId, stationName, date);
                 return Ok(list);
             }
             catch (Exception ex) { Console.WriteLine(ex); return StatusCode(500, new { message = "Unexpected error" }); }
