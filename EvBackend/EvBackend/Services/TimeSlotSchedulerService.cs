@@ -173,22 +173,27 @@ namespace EvBackend.Services
             return result;
         }
 
-        public async Task<IEnumerable<TimeSlot>> GetAvailableTimeSlotsAsync(string stationId, string slotId, DateTime date)
+        public async Task UpdateExpiredTimeSlotsToAvailableAsync()
         {
-            var startOfDay = date.Date.ToUniversalTime();
-            var endOfDay = startOfDay.AddDays(1);
+            try
+            {
+                var nowUtc = DateTime.UtcNow;
 
-            var filter = Builders<TimeSlot>.Filter.Eq(t => t.StationId, stationId)
-                        & Builders<TimeSlot>.Filter.Eq(t => t.SlotId, slotId)
-                        & Builders<TimeSlot>.Filter.Gte(t => t.StartTime, startOfDay)
-                        & Builders<TimeSlot>.Filter.Lt(t => t.StartTime, endOfDay)
-                        & Builders<TimeSlot>.Filter.Eq(t => t.Status, "Available");
+                // Find timeslots where EndTime is before now and status is not already "Available"
+                var filter = Builders<TimeSlot>.Filter.Lt(t => t.EndTime, nowUtc) &
+                             Builders<TimeSlot>.Filter.Ne(t => t.Status, "Available");
 
-            var result = await _timeSlots.Find(filter)
-                                        .SortBy(t => t.StartTime)
-                                        .ToListAsync();
+                var update = Builders<TimeSlot>.Update.Set(t => t.Status, "Available");
 
-            return result;
+                var result = await _timeSlots.UpdateManyAsync(filter, update);
+
+                _logger.LogInformation("Updated {Count} expired timeslots to 'Available' at {Time}.",
+                    result.ModifiedCount, nowUtc);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating expired timeslots to 'Available'.");
+            }
         }
     }
 }
