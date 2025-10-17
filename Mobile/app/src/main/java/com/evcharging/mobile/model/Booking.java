@@ -46,6 +46,7 @@ public class Booking {
         return "Booking ID: " + bookingId + "\n" +
                "Status: " + status + "\n" +
                "Start: " + startTime + "\n" +
-               "End: " + endTime;
+               "End: " + endTime + "\n" +
+               "Slot ID" + slotId;
     }
 }

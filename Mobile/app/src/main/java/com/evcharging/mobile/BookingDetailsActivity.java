@@ -29,7 +29,7 @@ import org.json.JSONObject;
 
 public class BookingDetailsActivity extends AppCompatActivity {
 
-    private TextView tvBookingId, tvStatus, tvStartTime, tvEndTime;
+    private TextView tvBookingId, tvStatus, tvStartTime, tvEndTime,tvOwnerName,tvSlotNumber;
     private Button btnScanQr, btnFinalize;
     private ImageButton btnBack;
     private SwipeRefreshLayout srBookingDetails;
@@ -86,6 +86,8 @@ public class BookingDetailsActivity extends AppCompatActivity {
         btnFinalize = findViewById(R.id.btnFinalize);
         btnBack = findViewById(R.id.btnBack);
         srBookingDetails = findViewById(R.id.srBookingDetails);
+        tvOwnerName = findViewById(R.id.tvOwnerName);
+        tvSlotNumber = findViewById(R.id.tvSlotNumber);
     }
 
     private void bindFromIntent() {
@@ -97,6 +99,8 @@ public class BookingDetailsActivity extends AppCompatActivity {
         String endTime = getIntent().getStringExtra("formattedEndTime");
         if (endTime == null || endTime.isEmpty())
             endTime = getIntent().getStringExtra("endTime");
+        String ownerName = getIntent().getStringExtra("ownerName");
+        int slotNumber = getIntent().getIntExtra("slotNumber", 0);
 
 
 
@@ -104,7 +108,8 @@ public class BookingDetailsActivity extends AppCompatActivity {
         tvStatus.setText("Status: " + (status != null ? status : "-"));
         tvStartTime.setText("Start: " + (startTime != null ? startTime : "-"));
         tvEndTime.setText("End: " + (endTime != null ? endTime : "-"));
-
+        tvOwnerName.setText("Owner: " + (ownerName != null ? ownerName : "-"));
+        tvSlotNumber.setText("Slot: " + (slotNumber > 0 ? "Slot " + slotNumber : "-"));
 
     }
 
@@ -165,13 +170,15 @@ public class BookingDetailsActivity extends AppCompatActivity {
                     String status = o.optString("status", "-");
                     String startTime = o.optString("formattedStartTime", o.optString("startTime", "-"));
                     String endTime = o.optString("formattedEndTime", o.optString("endTime", "-"));
-
+                    String ownerName = o.optString("ownerName", "-");
+                    int slotNumber = o.optInt("slotNumber", 0);
 
                     tvBookingId.setText(bookingId);
-                    tvStatus.setText("Status: " + status);
-                    tvStartTime.setText("Start: " + startTime);
-                    tvEndTime.setText("End: " + endTime);
-
+                    tvStatus.setText(status);
+                    tvStartTime.setText(startTime);
+                    tvEndTime.setText(endTime);
+                    tvOwnerName.setText(ownerName);
+                    tvSlotNumber.setText((slotNumber > 0 ? "Slot " + slotNumber : "-"));
                     
 
                 } catch (Exception e) {

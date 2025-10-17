@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using EvBackend.Entities;
 using MongoDB.Driver;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 
 namespace EvBackend.Services
 {
@@ -45,6 +46,40 @@ namespace EvBackend.Services
                                    Builders<TimeSlot>.Filter.Lt(t => t.StartTime, deleteEndUtc);
                 var deleted = await _timeSlots.DeleteManyAsync(deleteFilter);
                 _logger.LogInformation("🧹 Deleted {Count} time slots for {Date}.", deleted.DeletedCount, dayToDelete);
+
+                // --- REMOVE DUPLICATES (same Station, Slot, Start & End Time) ---
+                var duplicateGroups = await _timeSlots.Aggregate()
+                    .Group(new BsonDocument
+                    {
+                { "_id", new BsonDocument {
+                    { "stationId", "$StationId" },
+                    { "slotId", "$SlotId" },
+                    { "startTime", "$StartTime" },
+                    { "endTime", "$EndTime" }
+                }},
+                { "ids", new BsonDocument("$push", "$_id") },
+                { "count", new BsonDocument("$sum", 1) }
+                    })
+                    .Match(new BsonDocument("count", new BsonDocument("$gt", 1)))
+                    .ToListAsync();
+
+                int duplicateCount = 0;
+
+                foreach (var group in duplicateGroups)
+                {
+                    var ids = group["ids"].AsBsonArray.Select(x => x.AsObjectId).ToList();
+                    var idsToDelete = ids.Skip(1).ToList();
+
+                    if (idsToDelete.Any())
+                    {
+                        var dupFilter = Builders<TimeSlot>.Filter.In("_id", idsToDelete);
+                        var result = await _timeSlots.DeleteManyAsync(dupFilter);
+                        duplicateCount += (int)result.DeletedCount;
+                    }
+                }
+
+                if (duplicateCount > 0)
+                    _logger.LogInformation("🗑️ Removed {Count} duplicate timeslots with same Start/End times.", duplicateCount);
 
                 // Check if the day-to-add already exists (duplicate protection)
                 var addStartUtc = TimeZoneInfo.ConvertTimeToUtc(dayToAdd, sriLankaTz);

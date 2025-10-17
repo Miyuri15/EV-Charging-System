@@ -296,7 +296,7 @@ public class UpdateBookingActivity extends AppCompatActivity {
             @Override
             protected ApiResponse doInBackground(Void... voids) {
                 try {
-                    String endpoint = String.format("/timeslot?stationId=%s&slotId=%s&date=%s",
+                    String endpoint = String.format("/timeslot/available?stationId=%s&slotId=%s&date=%s",
                             currentBooking.getStationId(), slotId, selectedDateStr);
                     return apiClient.get(endpoint);
                 } catch (Exception e) {
