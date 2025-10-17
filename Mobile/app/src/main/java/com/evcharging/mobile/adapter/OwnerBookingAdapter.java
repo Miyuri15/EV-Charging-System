@@ -90,10 +90,9 @@ public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapte
     // ----------------------------------------------------
     public static class BookingViewHolder extends RecyclerView.ViewHolder {
 
-        private final TextView tvStationName, tvStatus, tvDate, tvTime, tvSlotNumber, tvDuration, tvProgressPercent;
-        private final LinearLayout statusBadge, chargingProgressLayout;
+        private final TextView tvStationName, tvStatus, tvDate, tvTime, tvSlotNumber, tvDuration;
+        private final LinearLayout statusBadge;
         private final View cardBooking;
-        private final LinearProgressIndicator progressCharging;
         private final MaterialButton btnViewDetails;
 
         public BookingViewHolder(@NonNull View itemView) {
@@ -104,11 +103,8 @@ public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapte
             tvTime = itemView.findViewById(R.id.tvTime);
             tvSlotNumber = itemView.findViewById(R.id.tvSlotNumber);
             tvDuration = itemView.findViewById(R.id.tvDuration);
-            tvProgressPercent = itemView.findViewById(R.id.tvProgressPercent);
             statusBadge = itemView.findViewById(R.id.statusBadge);
             cardBooking = itemView.findViewById(R.id.cardBooking);
-            chargingProgressLayout = itemView.findViewById(R.id.chargingProgressLayout);
-            progressCharging = itemView.findViewById(R.id.progressCharging);
             btnViewDetails = itemView.findViewById(R.id.btnViewDetails);
         }
 
@@ -127,12 +123,7 @@ public class OwnerBookingAdapter extends RecyclerView.Adapter<OwnerBookingAdapte
             setStatusStyle(booking.getStatus());
 
             if ("Charging".equalsIgnoreCase(booking.getStatus())) {
-                chargingProgressLayout.setVisibility(View.VISIBLE);
                 int progress = calculateDefaultProgress(booking.getStartTime(), booking.getEndTime());
-                progressCharging.setProgress(progress);
-                tvProgressPercent.setText(progress + "%");
-            } else {
-                chargingProgressLayout.setVisibility(View.GONE);
             }
 
             setupActionButtons(booking, listener);
