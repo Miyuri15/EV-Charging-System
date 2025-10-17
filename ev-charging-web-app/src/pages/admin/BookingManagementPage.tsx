@@ -348,6 +348,13 @@ function BookingManagementPage() {
     );
   };
 
+  const formatTime = (dateString: string | Date) => {
+    return new Date(dateString).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  };
   const BookingCard = ({
     booking,
     showActions = false,
@@ -374,19 +381,32 @@ function BookingManagementPage() {
           <p className="font-medium text-gray-900">{booking.bookingId}</p>
         </div>
         <div>
-          <p className="text-gray-500">Date</p>
+          <p className="text-gray-500">Created Date</p>
           <p className="font-medium text-gray-900">
             {formatDate(booking.createdAt)}
           </p>
         </div>
         {(booking.formattedStartTime || booking.startTime) && (
-          <div className="col-span-2">
-            <p className="text-gray-500">Time Slot</p>
-            <p className="font-medium text-gray-900">
-              {booking.formattedStartTime || formatDate(booking.startTime!)} -{" "}
-              {booking.formattedEndTime || formatDate(booking.endTime!)}
-            </p>
-          </div>
+          <>
+            {/* <div>
+              <p className="text-gray-500">Booking Date</p>
+              <p className="font-medium text-gray-900">
+                {booking.startTime ? formatDate(booking.startTime) : "N/A"}
+              </p>
+            </div> */}
+            <div className="col-span-2">
+              <p className="text-gray-500">Time Slot</p>
+              <p className="font-medium text-gray-900">
+                {booking.formattedStartTime ||
+                  (booking.startTime
+                    ? formatTime(booking.startTime)
+                    : "N/A")}{" "}
+                -{" "}
+                {booking.formattedEndTime ||
+                  (booking.endTime ? formatTime(booking.endTime) : "N/A")}
+              </p>
+            </div>
+          </>
         )}
         {booking.amount && (
           <div className="col-span-2">
