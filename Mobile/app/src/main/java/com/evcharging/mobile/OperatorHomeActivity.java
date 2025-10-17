@@ -30,6 +30,7 @@ public class OperatorHomeActivity extends AppCompatActivity {
     private ImageButton btnLogout;
     private ListView lvTodayReservations;
     private SwipeRefreshLayout srTodayReservations;
+    private LinearLayout emptyTodayReservations; // Add this
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +47,9 @@ public class OperatorHomeActivity extends AppCompatActivity {
 
         // pull-to-refresh
         srTodayReservations.setOnRefreshListener(this::loadTodayBookings);
+
+        // Show empty state initially
+        showEmptyTodayReservations();
     }
 
     @Override
@@ -66,6 +70,7 @@ public class OperatorHomeActivity extends AppCompatActivity {
         btnLogout = findViewById(R.id.btnLogout);
         lvTodayReservations = findViewById(R.id.lvTodayReservations);
         srTodayReservations = findViewById(R.id.srTodayReservations);
+        emptyTodayReservations = findViewById(R.id.emptyTodayReservations); // Initialize this
     }
 
     private void loadOperatorBasics() {
@@ -100,6 +105,20 @@ public class OperatorHomeActivity extends AppCompatActivity {
         btnViewBookings.setOnClickListener(v -> startActivity(new Intent(this, AllBookingsActivity.class)));
     }
 
+    private void showEmptyTodayReservations() {
+        if (lvTodayReservations != null && emptyTodayReservations != null) {
+            lvTodayReservations.setVisibility(View.GONE);
+            emptyTodayReservations.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void showTodayReservationsList() {
+        if (lvTodayReservations != null && emptyTodayReservations != null) {
+            lvTodayReservations.setVisibility(View.VISIBLE);
+            emptyTodayReservations.setVisibility(View.GONE);
+        }
+    }
+
     private void loadTodayBookings() {
         User user = session.getLoggedInUser();
 
@@ -107,6 +126,7 @@ public class OperatorHomeActivity extends AppCompatActivity {
             String[] msg = {"No station assigned yet"};
             lvTodayReservations.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, msg));
             srTodayReservations.setRefreshing(false);
+            showEmptyTodayReservations();
             return;
         }
 
@@ -124,10 +144,7 @@ public class OperatorHomeActivity extends AppCompatActivity {
                 srTodayReservations.setRefreshing(false);
 
                 if (response == null || !response.isSuccess() || response.getData() == null) {
-                    String[] msg = {"No bookings found for today"};
-                    lvTodayReservations.setAdapter(
-                            new ArrayAdapter<>(OperatorHomeActivity.this,
-                                    android.R.layout.simple_list_item_1, msg));
+                    showEmptyTodayReservations();
                     return;
                 }
 
@@ -146,46 +163,11 @@ public class OperatorHomeActivity extends AppCompatActivity {
                     }
 
                     if (reservations.isEmpty()) {
-                        lvTodayReservations.setAdapter(null);
-
-// 🔹 Remove any existing placeholder
-                        if (lvTodayReservations.getHeaderViewsCount() > 0) {
-                            lvTodayReservations.removeHeaderView(lvTodayReservations.getChildAt(0));
-                        }
-
-// 🔹 Create one centered empty-state layout
-                        LinearLayout emptyLayout = new LinearLayout(OperatorHomeActivity.this);
-                        emptyLayout.setOrientation(LinearLayout.VERTICAL);
-                        emptyLayout.setGravity(android.view.Gravity.CENTER); // center both vertically + horizontally
-                        emptyLayout.setPadding(40, 120, 40, 120); // more padding for breathing room
-
-// 🗓️ Icon
-                        ImageView icon = new ImageView(OperatorHomeActivity.this);
-                        icon.setImageResource(R.drawable.ic_calendar_empty);
-                        icon.setColorFilter(android.graphics.Color.parseColor("#9E9E9E"));
-                        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(200, 200);
-                        iconParams.gravity = android.view.Gravity.CENTER;
-                        iconParams.bottomMargin = 32;
-                        emptyLayout.addView(icon, iconParams);
-
-// 📝 Text
-                        TextView msgView = new TextView(OperatorHomeActivity.this);
-                        msgView.setText("No bookings scheduled for today");
-                        msgView.setTextSize(17);
-                        msgView.setTextColor(android.graphics.Color.parseColor("#616161"));
-                        msgView.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
-                        msgView.setGravity(android.view.Gravity.CENTER);
-                        emptyLayout.addView(msgView);
-
-// 🔹 Add it once
-                        if (lvTodayReservations.getHeaderViewsCount() == 0) {
-                            lvTodayReservations.addHeaderView(emptyLayout, null, false);
-                        }
-
-
+                        showEmptyTodayReservations();
                         return;
                     }
 
+                    showTodayReservationsList();
                     TodayReservationAdapter adapter =
                             new TodayReservationAdapter(OperatorHomeActivity.this, reservations);
                     lvTodayReservations.setAdapter(adapter);
@@ -206,6 +188,7 @@ public class OperatorHomeActivity extends AppCompatActivity {
 
                 } catch (Exception e) {
                     Log.e("BOOKINGS", "Error parsing bookings: " + e.getMessage());
+                    showEmptyTodayReservations();
                 }
             }
 
@@ -235,5 +218,4 @@ public class OperatorHomeActivity extends AppCompatActivity {
                 }
         );
     }
-
 }
