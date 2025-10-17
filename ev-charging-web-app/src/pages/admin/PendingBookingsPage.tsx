@@ -119,6 +119,29 @@ function PendingBookingsPage() {
     fetchPendingBookings(page, pendingBookings.pageSize);
   };
 
+  // Format date for display (without time)
+  const formatDate = (dateString: string | Date) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      timeZone: "Asia/Colombo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  };
+
+  // Format datetime for created date (with time)
+  const formatDateTime = (dateString: string | Date) => {
+    return new Date(dateString).toLocaleString("en-US", {
+      timeZone: "Asia/Colombo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  };
+
   // Loading Spinner
   const LoadingSpinner = () => (
     <div className="flex justify-center items-center py-20">
@@ -211,6 +234,19 @@ function PendingBookingsPage() {
                       {booking.stationName || "N/A"}
                     </span>
                   </div>
+
+                  <div className="flex justify-between items-start">
+                    <span className="text-gray-500 whitespace-nowrap pr-2">
+                      Charging Date:
+                    </span>
+                    <span className="font-semibold text-right break-all">
+                      {booking.startTime
+                        ? formatDate(booking.startTime)
+                        : "N/A"}
+                    </span>
+                  </div>
+
+                  {/* Time Slot */}
                   <div className="flex justify-between items-start">
                     <span className="text-gray-500 whitespace-nowrap pr-2">
                       Time Slot:
@@ -223,38 +259,14 @@ function PendingBookingsPage() {
                         : "N/A"}
                     </span>
                   </div>
-                  <div className="flex justify-between items-start">
-                    <span className="text-gray-500 whitespace-nowrap pr-2">
-                      Booking Date:
-                    </span>
-                    <span className="font-semibold text-right break-all">
-                      {booking.startTime
-                        ? new Date(booking.startTime).toLocaleDateString(
-                            "en-US",
-                            {
-                              timeZone: "Asia/Colombo",
-                              year: "numeric",
-                              month: "2-digit",
-                              day: "2-digit",
-                            }
-                          )
-                        : "N/A"}
-                    </span>
-                  </div>
+
+                  {/* Created Date (with time) */}
                   <div className="flex justify-between items-start">
                     <span className="text-gray-500 whitespace-nowrap pr-2">
                       Created At:
                     </span>
                     <span className="font-semibold text-right break-all">
-                      {new Date(booking.createdAt).toLocaleString("en-US", {
-                        timeZone: "Asia/Colombo",
-                        year: "numeric",
-                        month: "2-digit",
-                        day: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: false,
-                      })}
+                      {formatDateTime(booking.createdAt)}
                     </span>
                   </div>
                 </div>
