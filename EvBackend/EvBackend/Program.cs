@@ -75,6 +75,8 @@ builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 builder.Services.AddScoped<IUsageAnalyticsService, UsageAnalyticsService>();
+builder.Services.AddHostedService<BookingExpirationService>();
+
 
 
 builder.Services.Configure<Microsoft.AspNetCore.Routing.RouteOptions>(options =>
@@ -193,6 +195,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddSingleton<TimeSlotSchedulerService>();
 builder.Services.AddHostedService<DailyTimeSlotWorker>();
 builder.Services.AddHostedService<TimeSlotExpiredStatusHostedService>();
+builder.Services.AddHostedService<BookingExpirationService>();
 
 // ---------------------------------------------------------
 // SignalR

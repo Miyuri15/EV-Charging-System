@@ -44,6 +44,8 @@ namespace EvBackend.Models.DTOs
         public string? OwnerName { get; set; }
         public string? CancellationReason { get; set; }
 
+        public bool IsExpired { get; set; }
+        public DateTime? ExpiredAt { get; set; }
     }
 
     // Create = StationId + TimeSlotId + SlotId
