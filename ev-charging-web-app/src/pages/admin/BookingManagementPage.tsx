@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   getRequestWithPagination,
   patchRequest,
@@ -28,6 +28,12 @@ interface PagedResult<T> {
   totalPages: number;
   currentPage: number;
   pageSize: number;
+}
+
+interface FilterState {
+  bookingId: string;
+  stationName: string;
+  date: string;
 }
 
 function BookingManagementPage() {
@@ -68,7 +74,26 @@ function BookingManagementPage() {
   >(null);
   const [actionBookingId, setActionBookingId] = useState<string | null>(null);
 
-  // Then in your fetchBookings function, map the data:
+  // Filter states for each tab
+  const [filters, setFilters] = useState<{
+    pending: FilterState;
+    approved: FilterState;
+    completed: FilterState;
+  }>({
+    pending: { bookingId: "", stationName: "", date: "" },
+    approved: { bookingId: "", stationName: "", date: "" },
+    completed: { bookingId: "", stationName: "", date: "" },
+  });
+
+  // Use ref to track the latest filters
+  const filtersRef = useRef(filters);
+
+  // Update ref when filters change
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+
+  // Update fetchBookings to use ref for current filters
   const fetchBookings = async (
     tab: "pending" | "approved" | "completed",
     pageNumber = 1,
@@ -88,10 +113,30 @@ function BookingManagementPage() {
           break;
       }
 
-      const response = await getRequestWithPagination<Booking>(endpoint, {
+      // Get current filters from ref
+      const currentFilters = filtersRef.current[tab];
+
+      // Build query parameters with filters
+      const queryParams: any = {
         pageNumber,
         pageSize,
-      });
+      };
+
+      // Add filters if they exist
+      if (currentFilters.bookingId) {
+        queryParams.bookingId = currentFilters.bookingId;
+      }
+      if (currentFilters.stationName) {
+        queryParams.stationName = currentFilters.stationName;
+      }
+      if (currentFilters.date) {
+        queryParams.date = currentFilters.date;
+      }
+
+      const response = await getRequestWithPagination<Booking>(
+        endpoint,
+        queryParams
+      );
 
       if (response?.data) {
         switch (tab) {
@@ -128,6 +173,68 @@ function BookingManagementPage() {
 
     loadAll();
   }, []);
+
+  // Handle filter changes
+  const handleFilterChange = (
+    tab: "pending" | "approved" | "completed",
+    filterType: keyof FilterState,
+    value: string
+  ) => {
+    setFilters((prev) => ({
+      ...prev,
+      [tab]: {
+        ...prev[tab],
+        [filterType]: value,
+      },
+    }));
+  };
+
+  // Apply filters handler
+  const handleApplyFilters = async (
+    tab: "pending" | "approved" | "completed"
+  ) => {
+    setLoading(true);
+    await fetchBookings(tab, 1);
+    setLoading(false);
+  };
+
+  // Clear filters handler
+  const handleClearFilters = async (
+    tab: "pending" | "approved" | "completed"
+  ) => {
+    // First clear the filters
+    setFilters((prev) => ({
+      ...prev,
+      [tab]: { bookingId: "", stationName: "", date: "" },
+    }));
+
+    // Wait for state to update, then fetch fresh data
+    setLoading(true);
+    setTimeout(async () => {
+      await fetchBookings(tab, 1);
+      setLoading(false);
+    }, 0);
+  };
+
+  // Clear single filter handler
+  const handleClearSingleFilter = async (
+    tab: "pending" | "approved" | "completed",
+    filterType: keyof FilterState
+  ) => {
+    setFilters((prev) => ({
+      ...prev,
+      [tab]: {
+        ...prev[tab],
+        [filterType]: "",
+      },
+    }));
+
+    setLoading(true);
+    setTimeout(async () => {
+      await fetchBookings(tab, 1);
+      setLoading(false);
+    }, 0);
+  };
 
   const activeBookings = useMemo(() => {
     switch (activeTab) {
@@ -252,11 +359,9 @@ function BookingManagementPage() {
       <div className="flex justify-between items-start mb-4">
         <div>
           <h4 className="font-semibold text-gray-900 text-lg mb-1">
-            {/* Use ownerName directly */}
             {booking.ownerName || `Booking #${booking.bookingId.slice(-8)}`}
           </h4>
           <p className="text-gray-600 text-sm">
-            {/* Use stationName directly */}
             {booking.stationName || "General Service"}
           </p>
         </div>
@@ -268,15 +373,12 @@ function BookingManagementPage() {
           <p className="text-gray-500">Booking ID</p>
           <p className="font-medium text-gray-900">{booking.bookingId}</p>
         </div>
-        {/*
-         */}
         <div>
           <p className="text-gray-500">Date</p>
           <p className="font-medium text-gray-900">
             {formatDate(booking.createdAt)}
           </p>
         </div>
-        {/* Show time range if available */}
         {(booking.formattedStartTime || booking.startTime) && (
           <div className="col-span-2">
             <p className="text-gray-500">Time Slot</p>
@@ -296,7 +398,6 @@ function BookingManagementPage() {
         )}
       </div>
 
-      {/* Rest of the component remains the same */}
       <div className="flex justify-between items-center pt-4 border-t border-gray-100">
         <button
           onClick={() => navigate(`/admin/bookings/${booking.bookingId}`)}
@@ -373,6 +474,126 @@ function BookingManagementPage() {
       </div>
     </div>
   );
+
+  const FilterSection = ({
+    tab,
+  }: {
+    tab: "pending" | "approved" | "completed";
+  }) => {
+    const currentFilters = filters[tab];
+    const hasActiveFilters =
+      currentFilters.bookingId ||
+      currentFilters.stationName ||
+      currentFilters.date;
+
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Booking ID Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Booking ID
+            </label>
+            <input
+              type="text"
+              placeholder="Search by Booking ID"
+              value={currentFilters.bookingId}
+              onChange={(e) =>
+                handleFilterChange(tab, "bookingId", e.target.value)
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Station Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Station
+            </label>
+            <input
+              type="text"
+              placeholder="Search by Station"
+              value={currentFilters.stationName}
+              onChange={(e) =>
+                handleFilterChange(tab, "stationName", e.target.value)
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Date Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Date
+            </label>
+            <input
+              type="date"
+              value={currentFilters.date}
+              onChange={(e) => handleFilterChange(tab, "date", e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-end space-x-2">
+            <button
+              onClick={() => handleApplyFilters(tab)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              Apply Filters
+            </button>
+            {hasActiveFilters && (
+              <button
+                onClick={() => handleClearFilters(tab)}
+                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors font-medium"
+              >
+                Clear All
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Active Filters Display */}
+        {hasActiveFilters && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {currentFilters.bookingId && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                Booking ID: {currentFilters.bookingId}
+                <button
+                  onClick={() => handleClearSingleFilter(tab, "bookingId")}
+                  className="ml-2 hover:text-blue-600 font-bold"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {currentFilters.stationName && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Station: {currentFilters.stationName}
+                <button
+                  onClick={() => handleClearSingleFilter(tab, "stationName")}
+                  className="ml-2 hover:text-green-600 font-bold"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {currentFilters.date && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                Date: {currentFilters.date}
+                <button
+                  onClick={() => handleClearSingleFilter(tab, "date")}
+                  className="ml-2 hover:text-purple-600 font-bold"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const TabNavigation = () => (
     <div className="bg-white rounded-xl p-2 shadow-sm border border-gray-200 mb-6">
@@ -549,6 +770,9 @@ function BookingManagementPage() {
 
         <TabNavigation />
 
+        {/* Filter Section for Active Tab */}
+        <FilterSection tab={activeTab} />
+
         {loading ? (
           <LoadingSpinner />
         ) : (
@@ -556,9 +780,17 @@ function BookingManagementPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {activeBookings.length === 0 ? (
                 <div className="col-span-full text-center py-12">
-                  <p className="text-gray-500">
+                  <div className="text-gray-500 text-lg mb-2">
                     No {activeTab} bookings found.
-                  </p>
+                  </div>
+                  {Object.values(filters[activeTab]).some(
+                    (filter) => filter
+                  ) && (
+                    <p className="text-sm text-gray-400">
+                      Try adjusting your filters or clear them to see all
+                      bookings.
+                    </p>
+                  )}
                 </div>
               ) : (
                 activeBookings.map((booking) => (
