@@ -150,56 +150,84 @@ function PendingBookingsPage() {
             {pendingBookings.items.map((booking) => (
               <div
                 key={booking.bookingId}
-                className="bg-white shadow-lg rounded-lg p-6 hover:shadow-xl transition-all flex flex-col justify-between"
+                className="bg-white shadow-lg rounded-lg p-6 hover:shadow-xl transition-all flex flex-col border border-gray-200"
               >
-                {/* Booking Header */}
-                <div className="flex justify-between items-center mb-4">
-                  <p className="text-lg font-semibold text-gray-700">
+                {/* Booking ID - Full width */}
+                <div className="mb-4">
+                  <p className="text-lg font-semibold text-gray-700 break-words bg-gray-50 px-3 py-2 rounded-md">
                     {booking.bookingId || "N/A"}
                   </p>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleApproveBooking(booking.bookingId)}
-                      className="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-all text-sm"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleCancelBooking(booking.bookingId)}
-                      className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition-all text-sm"
-                    >
-                      Cancel
-                    </button>
-                  </div>
+                </div>
+
+                {/* Action Buttons - Full width */}
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => handleApproveBooking(booking.bookingId)}
+                    disabled={actionLoading === booking.bookingId}
+                    className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 disabled:bg-green-400 transition-all text-sm font-medium whitespace-nowrap flex items-center justify-center min-h-[42px]"
+                  >
+                    {actionLoading === booking.bookingId &&
+                    currentAction === "approve" ? (
+                      <div className="flex items-center justify-center">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Approving...
+                      </div>
+                    ) : (
+                      "Approve"
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleCancelBooking(booking.bookingId)}
+                    disabled={actionLoading === booking.bookingId}
+                    className="flex-1 bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 disabled:bg-red-400 transition-all text-sm font-medium whitespace-nowrap flex items-center justify-center min-h-[42px]"
+                  >
+                    {actionLoading === booking.bookingId &&
+                    currentAction === "cancel" ? (
+                      <div className="flex items-center justify-center">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Cancelling...
+                      </div>
+                    ) : (
+                      "Cancel"
+                    )}
+                  </button>
                 </div>
 
                 {/* Booking Details */}
-                <div className="space-y-2 text-sm text-gray-600">
-                  <div className="flex justify-between">
-                    <span>Owner Id:</span>
-                    <span className="font-semibold">
+                <div className="space-y-3 text-sm text-gray-600 flex-1 mb-4">
+                  <div className="flex justify-between items-start">
+                    <span className="text-gray-500 whitespace-nowrap pr-2">
+                      Owner Id:
+                    </span>
+                    <span className="font-semibold text-right break-all">
                       {booking.ownerId || "N/A"}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Station:</span>
-                    <span className="font-semibold">
+                  <div className="flex justify-between items-start">
+                    <span className="text-gray-500 whitespace-nowrap pr-2">
+                      Station:
+                    </span>
+                    <span className="font-semibold text-right break-all">
                       {booking.stationName || "N/A"}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Time Slot:</span>
-                    <span className="font-semibold">
+                  <div className="flex justify-between items-start">
+                    <span className="text-gray-500 whitespace-nowrap pr-2">
+                      Time Slot:
+                    </span>
+                    <span className="font-semibold text-right break-all">
                       {booking.startTime && booking.endTime
                         ? `${formatTime(booking.startTime)} - ${formatTime(
                             booking.endTime
                           )}`
-                        : ""}
+                        : "N/A"}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Booking Date</span>
-                    <span className="font-semibold">
+                  <div className="flex justify-between items-start">
+                    <span className="text-gray-500 whitespace-nowrap pr-2">
+                      Booking Date:
+                    </span>
+                    <span className="font-semibold text-right break-all">
                       {booking.startTime
                         ? new Date(booking.startTime).toLocaleDateString(
                             "en-US",
@@ -213,10 +241,11 @@ function PendingBookingsPage() {
                         : "N/A"}
                     </span>
                   </div>
-
-                  <div className="flex justify-between">
-                    <span>Created At:</span>
-                    <span className="font-semibold">
+                  <div className="flex justify-between items-start">
+                    <span className="text-gray-500 whitespace-nowrap pr-2">
+                      Created At:
+                    </span>
+                    <span className="font-semibold text-right break-all">
                       {new Date(booking.createdAt).toLocaleString("en-US", {
                         timeZone: "Asia/Colombo",
                         year: "numeric",
@@ -235,7 +264,7 @@ function PendingBookingsPage() {
                   onClick={() =>
                     navigate(`/admin/bookings/${booking.bookingId}`)
                   }
-                  className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all"
+                  className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-all font-medium mt-auto"
                 >
                   View Details
                 </button>
