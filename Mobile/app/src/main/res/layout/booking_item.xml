@@ -49,6 +49,55 @@
                 android:textSize="14sp"
                 android:layout_marginBottom="8dp" />
 
+            <!-- Owner Name -->
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+
+                <ImageView
+                    android:src="@drawable/ic_person"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    app:tint="#757575" />
+
+                <TextView
+                    android:id="@+id/tvOwnerName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Owner: John Doe"
+                    android:textColor="#212121"
+                    android:textSize="14sp"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+
+            <!-- Slot Number -->
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+
+                <ImageView
+                    android:src="@drawable/ic_ev_station"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    app:tint="#757575" />
+
+                <TextView
+                    android:id="@+id/tvSlotNumber"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Slot: 1"
+                    android:textColor="#212121"
+                    android:textSize="14sp"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+
+            <!-- Start Time -->
             <LinearLayout
                 android:orientation="horizontal"
                 android:layout_width="match_parent"
@@ -72,6 +121,7 @@
                     android:layout_marginStart="8dp" />
             </LinearLayout>
 
+            <!-- End Time -->
             <LinearLayout
                 android:orientation="horizontal"
                 android:layout_width="match_parent"
