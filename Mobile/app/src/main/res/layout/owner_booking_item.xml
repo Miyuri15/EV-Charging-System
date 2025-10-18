@@ -283,48 +283,7 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Progress Bar for Charging Status -->
-            <LinearLayout
-                android:id="@+id/chargingProgressLayout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="6dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Charging Progress"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tvProgressPercent"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="65%"
-                        android:textColor="@color/primary"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <com.google.android.material.progressindicator.LinearProgressIndicator
-                    android:id="@+id/progressCharging"
-                    android:layout_width="match_parent"
-                    android:layout_height="6dp"
-                    app:trackColor="@color/gray_light"
-                    app:trackCornerRadius="3dp"
-                    app:indicatorColor="@color/primary" />
-            </LinearLayout>
 
             <!-- Action Button -->
             <com.google.android.material.button.MaterialButton
