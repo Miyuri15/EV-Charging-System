@@ -72,6 +72,37 @@
                         android:textColor="#BBDEFB" />
                 </LinearLayout>
 
+                <RelativeLayout
+                    android:id="@+id/headerRightGroup"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_alignParentRight="true"
+                    android:layout_marginEnd="12dp"
+                    android:gravity="center_vertical">
+
+                    <ImageButton
+                        android:id="@+id/btnNotificationsOp"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_notifications"
+                        app:tint="@color/white" />
+
+                    <TextView
+                        android:id="@+id/tvNotificationCountOp"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_alignEnd="@id/btnNotificationsOp"
+                        android:layout_alignTop="@id/btnNotificationsOp"
+                        android:layout_marginTop="0dp"
+                        android:layout_marginEnd="-6dp"
+                        android:gravity="center"
+                        android:text="0"
+                        android:textColor="@android:color/white"
+                        android:textSize="10sp"
+                        android:visibility="gone" />
+                </RelativeLayout>
+
                 <ImageButton
                     android:id="@+id/btnLogout"
                     android:layout_width="48dp"

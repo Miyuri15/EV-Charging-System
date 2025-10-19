@@ -1,7 +1,10 @@
 package com.evcharging.mobile;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Intent;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -27,10 +30,13 @@ public class OperatorHomeActivity extends AppCompatActivity {
     private ImageView ivProfile;
     private TextView tvWelcomeOperator, tvStationInfo, tvOperatorId;
     private Button btnViewProfile, btnUpdateSlots, btnViewBookings;
-    private ImageButton btnLogout;
+    private ImageButton btnLogout, btnNotificationsOp;
+    private TextView tvNotificationCountOp;
     private ListView lvTodayReservations;
     private SwipeRefreshLayout srTodayReservations;
     private LinearLayout emptyTodayReservations; // Add this
+    private MyApp app;
+    private int notificationCount = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,6 +50,18 @@ public class OperatorHomeActivity extends AppCompatActivity {
         bindViews();
         loadOperatorBasics();
         wireClicks();
+
+        app = (MyApp) getApplication();
+        createNotificationChannel();
+        app.getNotificationCountLiveData().observe(this, count -> {
+            notificationCount = (count != null) ? count : 0;
+            runOnUiThread(this::updateNotificationCountOp);
+        });
+
+        btnNotificationsOp.setOnClickListener(v -> {
+            startActivity(new Intent(OperatorHomeActivity.this, NotificationActivity.class));
+            app.resetNotificationCount();
+        });
 
         // pull-to-refresh
         srTodayReservations.setOnRefreshListener(this::loadTodayBookings);
@@ -71,6 +89,8 @@ public class OperatorHomeActivity extends AppCompatActivity {
         lvTodayReservations = findViewById(R.id.lvTodayReservations);
         srTodayReservations = findViewById(R.id.srTodayReservations);
         emptyTodayReservations = findViewById(R.id.emptyTodayReservations); // Initialize this
+        btnNotificationsOp = findViewById(R.id.btnNotificationsOp);
+        tvNotificationCountOp = findViewById(R.id.tvNotificationCountOp);
     }
 
     private void loadOperatorBasics() {
@@ -87,7 +107,8 @@ public class OperatorHomeActivity extends AppCompatActivity {
         tvOperatorId.setText("Operator ID: " + user.getUserId());
 
         String stationName = (user.getStationName() != null && !user.getStationName().equals("string"))
-                ? user.getStationName() : "Pending";
+                ? user.getStationName()
+                : "Pending";
         tvStationInfo.setText("Station: " + stationName);
     }
 
@@ -123,7 +144,7 @@ public class OperatorHomeActivity extends AppCompatActivity {
         User user = session.getLoggedInUser();
 
         if (user == null || user.getStationId() == null || user.getStationId().equals("string")) {
-            String[] msg = {"No station assigned yet"};
+            String[] msg = { "No station assigned yet" };
             lvTodayReservations.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, msg));
             srTodayReservations.setRefreshing(false);
             showEmptyTodayReservations();
@@ -168,8 +189,8 @@ public class OperatorHomeActivity extends AppCompatActivity {
                     }
 
                     showTodayReservationsList();
-                    TodayReservationAdapter adapter =
-                            new TodayReservationAdapter(OperatorHomeActivity.this, reservations);
+                    TodayReservationAdapter adapter = new TodayReservationAdapter(OperatorHomeActivity.this,
+                            reservations);
                     lvTodayReservations.setAdapter(adapter);
 
                     lvTodayReservations.setOnItemClickListener((parent, view, position, id) -> {
@@ -215,7 +236,31 @@ public class OperatorHomeActivity extends AppCompatActivity {
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
                     finish();
-                }
-        );
+                });
+    }
+
+    private void updateNotificationCountOp() {
+        if (tvNotificationCountOp == null)
+            return;
+        if (notificationCount > 0) {
+            tvNotificationCountOp.setVisibility(View.VISIBLE);
+            tvNotificationCountOp.setText(String.valueOf(notificationCount));
+        } else {
+            tvNotificationCountOp.setVisibility(View.GONE);
+        }
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            String channelId = "ev_notifications";
+            CharSequence name = "EV Notifications";
+            String description = "Channel for EV app notifications";
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel(channelId, name, importance);
+            channel.setDescription(description);
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            if (notificationManager != null)
+                notificationManager.createNotificationChannel(channel);
+        }
     }
 }
