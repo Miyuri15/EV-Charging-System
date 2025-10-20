@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "../common";
 import toast from "react-hot-toast";
+import Loading from "../common/Loading";
 
 // Type definitions - Updated to match API response
 interface EVOwner {
@@ -94,6 +95,7 @@ function UserManagement() {
   const [operators, setOperators] = useState<Operator[]>([]);
   const [owners, setOwners] = useState<EVOwner[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
+  const [stationsLoading, setStationsLoading] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
   const [activeTab, setActiveTab] = useState<
@@ -144,7 +146,6 @@ function UserManagement() {
   // Fetch all data on component mount
   useEffect(() => {
     fetchUserData();
-    fetchStations();
   }, []);
 
   // Fetch data when pagination changes
@@ -226,45 +227,13 @@ function UserManagement() {
           totalCount = operatorsData.length;
         }
 
-        // Fetch station information for each operator
-        const operatorsWithStations = await Promise.all(
-          operatorsData.map(async (operator: Operator) => {
-            if (operator.stationId) {
-              try {
-                const stationResponse = await api.get(
-                  `/station/${operator.stationId}`
-                );
-                if (stationResponse?.data) {
-                  return {
-                    ...operator,
-                    stationName: stationResponse.data.name,
-                    stationLocation: stationResponse.data.location,
-                  };
-                }
-              } catch (error) {
-                console.error(
-                  `Error fetching station for operator ${
-                    operator._id || operator.id
-                  }:`,
-                  error
-                );
-              }
-            }
-            return operator;
-          })
-        );
+        setOperators(operatorsData);
 
-        console.log(
-          `Processed ${operatorsWithStations.length} operators, total count: ${totalCount}`
-        );
-
-        setOperators(operatorsWithStations);
-
-        if (totalCount === 0 || totalCount === operatorsWithStations.length) {
-          if (operatorsWithStations.length === pageSize) {
+        if (totalCount === 0 || totalCount === operatorsData.length) {
+          if (operatorsData.length === pageSize) {
             totalCount = page * pageSize + 1;
           } else {
-            totalCount = (page - 1) * pageSize + operatorsWithStations.length;
+            totalCount = (page - 1) * pageSize + operatorsData.length;
           }
         }
 
@@ -341,6 +310,7 @@ function UserManagement() {
 
   const fetchStations = async (): Promise<void> => {
     try {
+      setStationsLoading(true);
       const response = await api.get("/station");
       if (response?.data?.items) {
         setStations(response.data.items);
@@ -350,6 +320,8 @@ function UserManagement() {
     } catch (err) {
       console.error("Error fetching stations:", err);
       toast.error("Failed to fetch stations");
+    } finally {
+      setStationsLoading(false);
     }
   };
 
@@ -362,6 +334,7 @@ function UserManagement() {
         operator.stationLocation || operator.StationLocation || "",
     });
     setShowUpdateStation(true);
+    fetchStations();
   };
 
   const handleStationUpdateChange = (stationId: string): void => {
@@ -830,24 +803,23 @@ function UserManagement() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-lg">Loading user data...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
-        <button
-          onClick={() => setShowCreateOperator(true)}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-        >
-          Create Operator
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => {
+              setShowCreateOperator(true);
+              fetchStations();
+            }}
+            disabled={loading}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Create Operator
+          </button>
+          {loading && <Loading size="sm" text="Loading..." className="mr-2" />}
+        </div>
       </div>
 
       {/* Reactivation Requests Section */}
@@ -1305,20 +1277,31 @@ function UserManagement() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   New Station *
                 </label>
-                <select
-                  value={stationUpdateForm.stationId}
-                  onChange={(e) => handleStationUpdateChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="">Select a new station</option>
-                  {stations
-                    .filter((station) => station.isActive)
-                    .map((station) => (
-                      <option key={station.stationId} value={station.stationId}>
-                        {station.name} - {station.location}
-                      </option>
-                    ))}
-                </select>
+                {stationsLoading ? (
+                  <div className="flex items-center justify-center p-6">
+                    <div className="text-sm text-gray-600">
+                      Loading stations...
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    value={stationUpdateForm.stationId}
+                    onChange={(e) => handleStationUpdateChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">Select a new station</option>
+                    {stations
+                      .filter((station) => station.isActive)
+                      .map((station) => (
+                        <option
+                          key={station.stationId}
+                          value={station.stationId}
+                        >
+                          {station.name} - {station.location}
+                        </option>
+                      ))}
+                  </select>
+                )}
               </div>
 
               {stationUpdateForm.stationId && (
@@ -1350,7 +1333,11 @@ function UserManagement() {
               </button>
               <button
                 onClick={handleUpdateOperatorStation}
-                disabled={updatingStation || !stationUpdateForm.stationId}
+                disabled={
+                  updatingStation ||
+                  stationsLoading ||
+                  !stationUpdateForm.stationId
+                }
                 className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
                 {updatingStation ? "Updating..." : "Update Station"}
@@ -1429,20 +1416,31 @@ function UserManagement() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Station *
                 </label>
-                <select
-                  value={operatorForm.stationId}
-                  onChange={(e) => handleStationChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="">Select a station</option>
-                  {stations
-                    .filter((station) => station.isActive)
-                    .map((station) => (
-                      <option key={station.stationId} value={station.stationId}>
-                        {station.name} - {station.location}
-                      </option>
-                    ))}
-                </select>
+                {stationsLoading ? (
+                  <div className="flex items-center justify-center p-6">
+                    <div className="text-sm text-gray-600">
+                      Loading stations...
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    value={operatorForm.stationId}
+                    onChange={(e) => handleStationChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">Select a station</option>
+                    {stations
+                      .filter((station) => station.isActive)
+                      .map((station) => (
+                        <option
+                          key={station.stationId}
+                          value={station.stationId}
+                        >
+                          {station.name} - {station.location}
+                        </option>
+                      ))}
+                  </select>
+                )}
               </div>
 
               {operatorForm.stationId && (
@@ -1472,6 +1470,7 @@ function UserManagement() {
                 onClick={handleCreateOperator}
                 disabled={
                   creatingOperator ||
+                  stationsLoading ||
                   !operatorForm.fullName ||
                   !operatorForm.email ||
                   !operatorForm.password ||
