@@ -19,6 +19,7 @@ namespace EvBackend.Services
         private readonly IMongoCollection<Station> _stations;
         private readonly IMongoCollection<Slot> _slots;
         private readonly IMongoCollection<TimeSlot> _timeSlots;
+        private readonly IMongoCollection<Booking> _bookings;
         private readonly GeocodingService _geocoding;
 
         public StationService(IMongoDatabase database, GeocodingService geocoding)
@@ -137,7 +138,6 @@ namespace EvBackend.Services
 
         // ✅ All other functions remain the same as before
         // (Update, Deactivate, Get, Search, Delete, etc.)
-
         public async Task<StationDto> UpdateStationAsync(string stationId, UpdateStationDto dto)
         {
             // Step 1: Retrieve the station from the database
@@ -166,12 +166,24 @@ namespace EvBackend.Services
             {
                 foreach (var slotUpdate in dto.SlotUpdates)
                 {
+                    // Filter for bookings related to this slot
+                    var bookingFilter = Builders<Booking>.Filter.And(
+                        Builders<Booking>.Filter.Eq(b => b.SlotId, slotUpdate.SlotId),
+                        Builders<Booking>.Filter.In(b => b.Status, new[] { "Pending", "Approved" })
+                    );
+
                     if (slotUpdate.Action == SlotAction.Remove)
                     {
                         // Remove the slot
                         var deleteFilter = Builders<Slot>.Filter.Eq(s => s.SlotId, slotUpdate.SlotId);
                         await _slots.DeleteOneAsync(deleteFilter);
                         station.SlotIds.Remove(slotUpdate.SlotId);
+
+                        // Cancel related bookings
+                        var cancelUpdate = Builders<Booking>.Update
+                            .Set(b => b.Status, "Cancelled")
+                            .Set(b => b.UpdatedAt, DateTime.UtcNow);
+                        await _bookings.UpdateManyAsync(bookingFilter, cancelUpdate);
                     }
                     else if (slotUpdate.Action == SlotAction.Update)
                     {
@@ -179,6 +191,15 @@ namespace EvBackend.Services
                         var filterSlot = Builders<Slot>.Filter.Eq(s => s.SlotId, slotUpdate.SlotId);
                         var updateSlot = Builders<Slot>.Update.Set(s => s.Status, slotUpdate.Status);
                         await _slots.UpdateOneAsync(filterSlot, updateSlot);
+
+                        // If new status is NOT 'Available', cancel related bookings
+                        if (!string.Equals(slotUpdate.Status, "Available", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var cancelUpdate = Builders<Booking>.Update
+                                .Set(b => b.Status, "Cancelled")
+                                .Set(b => b.UpdatedAt, DateTime.UtcNow);
+                            await _bookings.UpdateManyAsync(bookingFilter, cancelUpdate);
+                        }
                     }
                     else if (slotUpdate.Action == SlotAction.Add)
                     {
@@ -192,7 +213,7 @@ namespace EvBackend.Services
                         var newSlot = new Slot
                         {
                             StationId = stationId,
-                            Number = nextNumber,  // Assign next available slot number
+                            Number = nextNumber,
                             Status = slotUpdate.Status
                         };
 
@@ -410,7 +431,7 @@ namespace EvBackend.Services
 
         public async Task<List<StationDto>> GetNearbyStationsByTypeAsync(string type, double latitude, double longitude, double radiusKm)
         {
-             try
+            try
             {
                 if (string.IsNullOrWhiteSpace(type))
                     throw new ArgumentException("Type is required (AC/DC)");
@@ -424,8 +445,8 @@ namespace EvBackend.Services
 
                 // Step 2: Filter by type (case-insensitive)
                 var filtered = nearbyStations
-                    .Where(s => s != null && 
-                                !string.IsNullOrEmpty(s.Type) && 
+                    .Where(s => s != null &&
+                                !string.IsNullOrEmpty(s.Type) &&
                                 string.Equals(s.Type, type, StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
