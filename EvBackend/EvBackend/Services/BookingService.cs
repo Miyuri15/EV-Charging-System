@@ -779,339 +779,30 @@ namespace EvBackend.Services
             };
         }
 
-        public async Task<PagedResultDto<BookingDto>> GetPendingBookingsAsync(int pageNumber, int pageSize, string bookingId = null, string stationName = null, string date = null)
+        public async Task<PagedResultDto<BookingDto>> GetPendingBookingsAsync(
+        int pageNumber, int pageSize, string bookingId = null, string stationName = null, string date = null)
         {
-            if (pageNumber < 1) pageNumber = 1;
-            if (pageSize < 1) pageSize = 10;
-
-            var col = _db.GetCollection<Booking>("Bookings");
-
-            // Build base filter
             var filter = Builders<Booking>.Filter.Eq(b => b.Status, "Pending");
-
-            try
-            {
-                // Apply booking ID filter - use exact match instead of Contains
-                if (!string.IsNullOrEmpty(bookingId))
-                {
-                    filter &= Builders<Booking>.Filter.Eq(b => b.BookingId, bookingId.Trim());
-                }
-
-                // Apply station name filter
-                if (!string.IsNullOrEmpty(stationName))
-                {
-                    var stationFilter = Builders<Station>.Filter.Where(s => s.Name.ToLower().Contains(stationName.Trim().ToLower()));
-                    var stations = await _db.GetCollection<Station>("Stations")
-                        .Find(stationFilter)
-                        .Project(s => s.StationId)
-                        .ToListAsync();
-
-                    if (stations.Any())
-                    {
-                        filter &= Builders<Booking>.Filter.In(b => b.StationId, stations);
-                    }
-                    else
-                    {
-                        // If no stations match, return empty result
-                        return new PagedResultDto<BookingDto>
-                        {
-                            Items = new List<BookingDto>(),
-                            TotalCount = 0,
-                            TotalPages = 0,
-                            CurrentPage = pageNumber,
-                            PageSize = pageSize
-                        };
-                    }
-                }
-
-                // Apply date filter
-                if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var filterDate))
-                {
-                    var tz = GetSriLankaTz();
-                    var startSL = new DateTime(filterDate.Year, filterDate.Month, filterDate.Day, 0, 0, 0);
-                    var endSL = startSL.AddDays(1).AddTicks(-1);
-                    var startUtc = TimeZoneInfo.ConvertTimeToUtc(startSL, tz);
-                    var endUtc = TimeZoneInfo.ConvertTimeToUtc(endSL, tz);
-
-                    filter &= Builders<Booking>.Filter.Gte(b => b.StartTime, startUtc) &
-                              Builders<Booking>.Filter.Lte(b => b.StartTime, endUtc);
-                }
-
-                var totalCount = await col.CountDocumentsAsync(filter);
-
-                var list = await col.Find(filter)
-                                    .SortByDescending(b => b.CreatedAt)
-                                    .Skip((pageNumber - 1) * pageSize)
-                                    .Limit(pageSize)
-                                    .ToListAsync();
-
-                var bookingDtos = new List<BookingDto>();
-
-                foreach (var b in list)
-                {
-                    var stationDto = await _stationService.GetStationByIdAsync(b.StationId);
-                    var ownerDto = await _evOwnerService.GetEVOwnerById(b.OwnerId);
-
-                    bookingDtos.Add(new BookingDto
-                    {
-                        BookingId = b.BookingId,
-                        StationId = b.StationId,
-                        SlotId = b.SlotId,
-                        SlotNumber = b.SlotNumber,
-                        TimeSlotId = b.TimeSlotId,
-                        OwnerId = b.OwnerId,
-                        Status = b.Status,
-                        StartTime = b.StartTime,
-                        EndTime = b.EndTime,
-                        CreatedAt = b.CreatedAt,
-                        UpdatedAt = b.UpdatedAt,
-                        FormattedStartTime = FormatSriLankaTime(b.StartTime),
-                        FormattedEndTime = FormatSriLankaTime(b.EndTime),
-                        FormattedDate = FormatSriLankaDate(b.StartTime),
-                        StationName = stationDto?.Name,
-                        OwnerName = ownerDto?.FullName
-                    });
-                }
-
-                return new PagedResultDto<BookingDto>
-                {
-                    Items = bookingDtos,
-                    TotalCount = totalCount,
-                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-                    CurrentPage = pageNumber,
-                    PageSize = pageSize
-                };
-            }
-            catch (Exception ex)
-            {
-                // Log the exception for debugging
-                Console.WriteLine($"Error in GetPendingBookingsAsync: {ex.Message}");
-                Console.WriteLine($"Stack Trace: {ex.StackTrace}");
-                throw;
-            }
+            return await GetBookingsByStatusAsync(filter, pageNumber, pageSize, bookingId, stationName, date);
         }
-        public async Task<PagedResultDto<BookingDto>> GetApprovedBookingsAsync(int pageNumber, int pageSize, string bookingId = null, string stationName = null, string date = null)
+
+        public async Task<PagedResultDto<BookingDto>> GetApprovedBookingsAsync(
+        int pageNumber, int pageSize, string bookingId = null, string stationName = null, string date = null)
         {
-            if (pageNumber < 1) pageNumber = 1;
-            if (pageSize < 1) pageSize = 10;
-
-            var col = _db.GetCollection<Booking>("Bookings");
-
-            // Build base filter
             var filter = Builders<Booking>.Filter.Eq(b => b.Status, "Approved");
-
-            try
-            {
-                // Apply booking ID filter - use exact match
-                if (!string.IsNullOrEmpty(bookingId))
-                {
-                    filter &= Builders<Booking>.Filter.Eq(b => b.BookingId, bookingId.Trim());
-                }
-
-                // Apply station name filter
-                if (!string.IsNullOrEmpty(stationName))
-                {
-                    var stationFilter = Builders<Station>.Filter.Where(s => s.Name.ToLower().Contains(stationName.Trim().ToLower()));
-                    var stations = await _db.GetCollection<Station>("Stations")
-                        .Find(stationFilter)
-                        .Project(s => s.StationId)
-                        .ToListAsync();
-
-                    if (stations.Any())
-                    {
-                        filter &= Builders<Booking>.Filter.In(b => b.StationId, stations);
-                    }
-                    else
-                    {
-                        return new PagedResultDto<BookingDto>
-                        {
-                            Items = new List<BookingDto>(),
-                            TotalCount = 0,
-                            TotalPages = 0,
-                            CurrentPage = pageNumber,
-                            PageSize = pageSize
-                        };
-                    }
-                }
-
-                // Apply date filter
-                if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var filterDate))
-                {
-                    var tz = GetSriLankaTz();
-                    var startSL = new DateTime(filterDate.Year, filterDate.Month, filterDate.Day, 0, 0, 0);
-                    var endSL = startSL.AddDays(1).AddTicks(-1);
-                    var startUtc = TimeZoneInfo.ConvertTimeToUtc(startSL, tz);
-                    var endUtc = TimeZoneInfo.ConvertTimeToUtc(endSL, tz);
-
-                    filter &= Builders<Booking>.Filter.Gte(b => b.StartTime, startUtc) &
-                              Builders<Booking>.Filter.Lte(b => b.StartTime, endUtc);
-                }
-
-                var totalCount = await col.CountDocumentsAsync(filter);
-
-                var list = await col.Find(filter)
-                                    .SortByDescending(b => b.CreatedAt)
-                                    .Skip((pageNumber - 1) * pageSize)
-                                    .Limit(pageSize)
-                                    .ToListAsync();
-
-                var bookingDtos = new List<BookingDto>();
-
-                foreach (var b in list)
-                {
-                    var stationDto = await _stationService.GetStationByIdAsync(b.StationId);
-                    var ownerDto = await _evOwnerService.GetEVOwnerById(b.OwnerId);
-
-                    bookingDtos.Add(new BookingDto
-                    {
-                        BookingId = b.BookingId,
-                        StationId = b.StationId,
-                        SlotId = b.SlotId,
-                        SlotNumber = b.SlotNumber,
-                        TimeSlotId = b.TimeSlotId,
-                        OwnerId = b.OwnerId,
-                        Status = b.Status,
-                        StartTime = b.StartTime,
-                        EndTime = b.EndTime,
-                        CreatedAt = b.CreatedAt,
-                        UpdatedAt = b.UpdatedAt,
-                        FormattedStartTime = FormatSriLankaTime(b.StartTime),
-                        FormattedEndTime = FormatSriLankaTime(b.EndTime),
-                        FormattedDate = FormatSriLankaDate(b.StartTime),
-                        StationName = stationDto?.Name,
-                        OwnerName = ownerDto?.FullName
-                    });
-                }
-
-                return new PagedResultDto<BookingDto>
-                {
-                    Items = bookingDtos,
-                    TotalCount = totalCount,
-                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-                    CurrentPage = pageNumber,
-                    PageSize = pageSize
-                };
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in GetApprovedBookingsAsync: {ex.Message}");
-                Console.WriteLine($"Stack Trace: {ex.StackTrace}");
-                throw;
-            }
+            return await GetBookingsByStatusAsync(filter, pageNumber, pageSize, bookingId, stationName, date);
         }
 
-        public async Task<PagedResultDto<BookingDto>> GetCompletedBookingsAsync(int pageNumber, int pageSize, string bookingId = null, string stationName = null, string date = null)
+        public async Task<PagedResultDto<BookingDto>> GetCompletedBookingsAsync(
+    int pageNumber, int pageSize, string bookingId = null, string stationName = null, string date = null)
         {
-            if (pageNumber < 1) pageNumber = 1;
-            if (pageSize < 1) pageSize = 10;
-
-            var col = _db.GetCollection<Booking>("Bookings");
-
-            // Build base filter
             var filter = Builders<Booking>.Filter.Or(
                 Builders<Booking>.Filter.Eq(b => b.Status, "Finalized"),
-                Builders<Booking>.Filter.Eq(b => b.Status, "Completed")
-            );
+                Builders<Booking>.Filter.Eq(b => b.Status, "Completed"));
 
-            try
-            {
-                // Apply booking ID filter - use exact match
-                if (!string.IsNullOrEmpty(bookingId))
-                {
-                    filter &= Builders<Booking>.Filter.Eq(b => b.BookingId, bookingId.Trim());
-                }
-
-                // Apply station name filter
-                if (!string.IsNullOrEmpty(stationName))
-                {
-                    var stationFilter = Builders<Station>.Filter.Where(s => s.Name.ToLower().Contains(stationName.Trim().ToLower()));
-                    var stations = await _db.GetCollection<Station>("Stations")
-                        .Find(stationFilter)
-                        .Project(s => s.StationId)
-                        .ToListAsync();
-
-                    if (stations.Any())
-                    {
-                        filter &= Builders<Booking>.Filter.In(b => b.StationId, stations);
-                    }
-                    else
-                    {
-                        return new PagedResultDto<BookingDto>
-                        {
-                            Items = new List<BookingDto>(),
-                            TotalCount = 0,
-                            TotalPages = 0,
-                            CurrentPage = pageNumber,
-                            PageSize = pageSize
-                        };
-                    }
-                }
-
-                // Apply date filter
-                if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var filterDate))
-                {
-                    var tz = GetSriLankaTz();
-                    var startSL = new DateTime(filterDate.Year, filterDate.Month, filterDate.Day, 0, 0, 0);
-                    var endSL = startSL.AddDays(1).AddTicks(-1);
-                    var startUtc = TimeZoneInfo.ConvertTimeToUtc(startSL, tz);
-                    var endUtc = TimeZoneInfo.ConvertTimeToUtc(endSL, tz);
-
-                    filter &= Builders<Booking>.Filter.Gte(b => b.StartTime, startUtc) &
-                              Builders<Booking>.Filter.Lte(b => b.StartTime, endUtc);
-                }
-
-                var totalCount = await col.CountDocumentsAsync(filter);
-
-                var list = await col.Find(filter)
-                                    .SortByDescending(b => b.CreatedAt)
-                                    .Skip((pageNumber - 1) * pageSize)
-                                    .Limit(pageSize)
-                                    .ToListAsync();
-
-                var bookingDtos = new List<BookingDto>();
-
-                foreach (var b in list)
-                {
-                    var stationDto = await _stationService.GetStationByIdAsync(b.StationId);
-                    var ownerDto = await _evOwnerService.GetEVOwnerById(b.OwnerId);
-
-                    bookingDtos.Add(new BookingDto
-                    {
-                        BookingId = b.BookingId,
-                        StationId = b.StationId,
-                        SlotId = b.SlotId,
-                        SlotNumber = b.SlotNumber,
-                        TimeSlotId = b.TimeSlotId,
-                        OwnerId = b.OwnerId,
-                        Status = b.Status,
-                        StartTime = b.StartTime,
-                        EndTime = b.EndTime,
-                        CreatedAt = b.CreatedAt,
-                        UpdatedAt = b.UpdatedAt,
-                        FormattedStartTime = FormatSriLankaTime(b.StartTime),
-                        FormattedEndTime = FormatSriLankaTime(b.EndTime),
-                        FormattedDate = FormatSriLankaDate(b.StartTime),
-                        StationName = stationDto?.Name,
-                        OwnerName = ownerDto?.FullName
-                    });
-                }
-
-                return new PagedResultDto<BookingDto>
-                {
-                    Items = bookingDtos,
-                    TotalCount = totalCount,
-                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-                    CurrentPage = pageNumber,
-                    PageSize = pageSize
-                };
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in GetCompletedBookingsAsync: {ex.Message}");
-                Console.WriteLine($"Stack Trace: {ex.StackTrace}");
-                throw;
-            }
+            return await GetBookingsByStatusAsync(filter, pageNumber, pageSize, bookingId, stationName, date);
         }
+
         public async Task<bool> HasActiveBookingAsync(string ownerId)
         {
             var bookingCol = _db.GetCollection<Booking>("Bookings");
@@ -1124,15 +815,13 @@ namespace EvBackend.Services
         }
 
         //Booking Expiration Method
-
-      
         public async Task<int> ExpireOldBookingsAsync()
         {
             var bookingCol = _db.GetCollection<Booking>("Bookings");
             var timeSlotCol = _db.GetCollection<TimeSlot>("TimeSlots");
-            
+
             var now = DateTime.UtcNow;
-            
+
             var filter = Builders<Booking>.Filter.And(
                 Builders<Booking>.Filter.In(b => b.Status, new[] { "Pending", "Approved" }),
                 Builders<Booking>.Filter.Lt(b => b.EndTime, now),
@@ -1181,6 +870,140 @@ namespace EvBackend.Services
             }
 
             return expiredCount;
+        }
+
+        private async Task<PagedResultDto<BookingDto>> GetBookingsByStatusAsync(
+        FilterDefinition<Booking> baseFilter,
+        int pageNumber,
+        int pageSize,
+        string bookingId = null,
+        string stationName = null,
+        string date = null)
+        {
+            var col = _db.GetCollection<Booking>("Bookings");
+
+            // --- Base filter ---
+            var filter = baseFilter;
+
+            // --- Booking ID filter ---
+            if (!string.IsNullOrEmpty(bookingId))
+            {
+                filter &= Builders<Booking>.Filter.Eq(b => b.BookingId, bookingId.Trim());
+            }
+
+            // --- Station name filter ---
+            if (!string.IsNullOrEmpty(stationName))
+            {
+                var stationFilter = Builders<Station>.Filter.Where(
+                    s => s.Name.ToLower().Contains(stationName.Trim().ToLower()));
+
+                var stations = await _db.GetCollection<Station>("Stations")
+                    .Find(stationFilter)
+                    .Project(s => s.StationId)
+                    .ToListAsync();
+
+                if (stations.Any())
+                {
+                    filter &= Builders<Booking>.Filter.In(b => b.StationId, stations);
+                }
+                else
+                {
+                    return new PagedResultDto<BookingDto>
+                    {
+                        Items = new List<BookingDto>(),
+                        TotalCount = 0,
+                        TotalPages = 0,
+                        CurrentPage = pageNumber,
+                        PageSize = pageSize
+                    };
+                }
+            }
+
+            // --- Date filter ---
+            if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var filterDate))
+            {
+                var tz = GetSriLankaTz();
+                var startSL = new DateTime(filterDate.Year, filterDate.Month, filterDate.Day, 0, 0, 0);
+                var endSL = startSL.AddDays(1).AddTicks(-1);
+                var startUtc = TimeZoneInfo.ConvertTimeToUtc(startSL, tz);
+                var endUtc = TimeZoneInfo.ConvertTimeToUtc(endSL, tz);
+
+                filter &= Builders<Booking>.Filter.Gte(b => b.StartTime, startUtc) &
+                          Builders<Booking>.Filter.Lte(b => b.StartTime, endUtc);
+            }
+
+            // --- Count ---
+            var totalCount = await col.CountDocumentsAsync(filter);
+
+            // --- Paged list ---
+            var list = await col.Find(filter)
+                                .SortByDescending(b => b.CreatedAt)
+                                .Skip((pageNumber - 1) * pageSize)
+                                .Limit(pageSize)
+                                .ToListAsync();
+
+            if (!list.Any())
+            {
+                return new PagedResultDto<BookingDto>
+                {
+                    Items = new List<BookingDto>(),
+                    TotalCount = 0,
+                    TotalPages = 0,
+                    CurrentPage = pageNumber,
+                    PageSize = pageSize
+                };
+            }
+
+            // --- Bulk fetch related data ---
+            var stationIds = list.Select(b => b.StationId).Distinct().ToList();
+            var ownerIds = list.Select(b => b.OwnerId).Distinct().ToList();
+
+            var stationCol = _db.GetCollection<Station>("Stations");
+            var ownerCol = _db.GetCollection<EVOwner>("EVOwners");
+
+            var stationTask = stationCol.Find(s => stationIds.Contains(s.StationId)).ToListAsync();
+            var ownerTask = ownerCol.Find(o => ownerIds.Contains(o.NIC)).ToListAsync();
+
+            await Task.WhenAll(stationTask, ownerTask);
+
+            var stationDict = stationTask.Result.ToDictionary(s => s.StationId, s => s);
+            var ownerDict = ownerTask.Result.ToDictionary(o => o.NIC, o => o);
+
+            // --- Map to DTOs ---
+            var bookingDtos = list.Select(b =>
+            {
+                var station = stationDict.GetValueOrDefault(b.StationId);
+                var owner = ownerDict.GetValueOrDefault(b.OwnerId);
+
+                return new BookingDto
+                {
+                    BookingId = b.BookingId,
+                    StationId = b.StationId,
+                    SlotId = b.SlotId,
+                    SlotNumber = b.SlotNumber,
+                    TimeSlotId = b.TimeSlotId,
+                    OwnerId = b.OwnerId,
+                    Status = b.Status,
+                    StartTime = b.StartTime,
+                    EndTime = b.EndTime,
+                    CreatedAt = b.CreatedAt,
+                    UpdatedAt = b.UpdatedAt,
+                    FormattedStartTime = FormatSriLankaTime(b.StartTime),
+                    FormattedEndTime = FormatSriLankaTime(b.EndTime),
+                    FormattedDate = FormatSriLankaDate(b.StartTime),
+                    StationName = station?.Name,
+                    OwnerName = owner?.FullName
+                };
+            }).ToList();
+
+            return new PagedResultDto<BookingDto>
+            {
+                Items = bookingDtos,
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                CurrentPage = pageNumber,
+                PageSize = pageSize
+            };
         }
 
     }
