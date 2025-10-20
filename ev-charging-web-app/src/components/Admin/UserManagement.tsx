@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "../common";
 import toast from "react-hot-toast";
+import Loading from "../common/Loading";
 
 // Type definitions - Updated to match API response
 interface EVOwner {
@@ -802,27 +803,23 @@ function UserManagement() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-lg">Loading user data...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
-        <button
-          onClick={() => {
-            setShowCreateOperator(true);
-            fetchStations();
-          }}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-        >
-          Create Operator
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => {
+              setShowCreateOperator(true);
+              fetchStations();
+            }}
+            disabled={loading}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Create Operator
+          </button>
+          {loading && <Loading size="sm" text="Loading..." className="mr-2" />}
+        </div>
       </div>
 
       {/* Reactivation Requests Section */}
