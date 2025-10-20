@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { postRequest, putRequest, getRequest } from "../../components/common/api";
 import type { CreateStationRequest, Slot, Station } from "../../types";
 import { useNavigate, useParams } from "react-router-dom";
+import Swal from "sweetalert2";
 
 const StationForm = ({ isEdit = false }: { isEdit?: boolean }) => {
     const [form, setForm] = useState<CreateStationRequest>({
@@ -44,19 +45,59 @@ const StationForm = ({ isEdit = false }: { isEdit?: boolean }) => {
         setForm({ ...form, [e.target.name]: e.target.value });
     };
 
-    const handleSlotChange = (index: number, field: keyof Slot, value: string) => {
+    // Confirm before changing slot status
+    const handleSlotChange = async (index: number, field: keyof Slot, value: string) => {
+        const slot = slots[index];
+
+        if (field === "status" && slot.status !== value) {
+            const result = await Swal.fire({
+                title: "Change Slot Status?",
+                text: `Are you sure you want to change slot #${slot.number} status from "${slot.status}" to "${value}"?`,
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Yes, change it",
+            });
+
+            if (!result.isConfirmed) return; // stop if cancelled
+        }
+
+        // Apply the change
         const updated = [...slots];
         updated[index] = { ...updated[index], [field]: value };
         setSlots(updated);
     };
 
-    // Mark slot as deleted
-    const handleDeleteSlot = (slotId: string) => {
+    // Confirm before deleting slot
+    const handleDeleteSlot = async (slotId: string) => {
         const slotToDelete = slots.find((s) => s.slotId === slotId);
-        if (slotToDelete) {
-            setDeletedSlots([...deletedSlots, slotToDelete]);
-            setSlots(slots.filter((s) => s.slotId !== slotId));
-        }
+        if (!slotToDelete) return;
+
+        const result = await Swal.fire({
+            title: "Delete Slot?",
+            text: `Are you sure you want to delete slot #${slotToDelete.number}? This action cannot be undone.`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Yes, delete it",
+        });
+
+        if (!result.isConfirmed) return;
+
+        // Proceed with deletion
+        setDeletedSlots([...deletedSlots, slotToDelete]);
+        setSlots(slots.filter((s) => s.slotId !== slotId));
+
+        // Optional feedback
+        Swal.fire({
+            title: "Deleted!",
+            text: `Slot #${slotToDelete.number} has been removed.`,
+            icon: "success",
+            timer: 1500,
+            showConfirmButton: false,
+        });
     };
 
     // Add a new slot (local only, will be sent as Add action)
@@ -72,6 +113,18 @@ const StationForm = ({ isEdit = false }: { isEdit?: boolean }) => {
     };
 
     const handleSubmit = async () => {
+        const result = await Swal.fire({
+            title: isEdit ? "Update Station?" : "Create Station?",
+            text: isEdit
+                ? "This will update the station details and slot configurations."
+                : "This will create a new charging station.",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "Yes, proceed",
+        });
+
+        if (!result.isConfirmed) return;
+        
         if (isEdit && stationId) {
             await putRequest(`/station/${stationId}`, {
                 ...form,
@@ -173,8 +226,8 @@ const StationForm = ({ isEdit = false }: { isEdit?: boolean }) => {
                         readOnly={isEdit}
                         onChange={handleChange}
                         className={`w-full p-3 border rounded-md ${isEdit
-                                ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                : "border-gray-300 focus:ring-2 focus:ring-green-500 focus:outline-none"
+                            ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                            : "border-gray-300 focus:ring-2 focus:ring-green-500 focus:outline-none"
                             }`}
                     />
                 </div>

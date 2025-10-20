@@ -27,6 +27,7 @@ namespace EvBackend.Services
             _stations = database.GetCollection<Station>("Stations");
             _slots = database.GetCollection<Slot>("Slots");
             _timeSlots = database.GetCollection<TimeSlot>("TimeSlots");
+            _bookings = database.GetCollection<Booking>("Bookings");
             _geocoding = geocoding;
         }
 
