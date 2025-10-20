@@ -314,26 +314,28 @@ namespace EvBackend.Services
             return station != null ? ToDto(station) : null;
         }
 
-        public async Task<PagedResultDto<StationDto>> GetAllStationsAsync(bool onlyActive = false, int page = 1, int pageSize = 10)
+        public async Task<PagedResultDto<StationDto>> GetAllStationsAsync(
+            bool onlyActive = false, int page = 1, int pageSize = 10)
         {
-            // Ensure page is greater than 0
             page = page < 1 ? 1 : page;
-
-            // Calculate the number of records to skip
             var skip = (page - 1) * pageSize;
 
-            // Define the filter (only active or all stations)
             var filter = onlyActive
                 ? Builders<Station>.Filter.Eq(s => s.IsActive, true)
                 : Builders<Station>.Filter.Empty;
 
-            // Fetch the stations with pagination (skip and limit)
-            var stations = await _stations.Find(filter)
-                                          .Skip(skip)
-                                          .Limit(pageSize)
-                                          .ToListAsync();
+            var pipeline = _stations.Aggregate()
+                .Match(filter)
+                .Lookup<Station, Slot, StationWithSlots>(
+                    _slots,
+                    s => s.StationId,
+                    sl => sl.StationId,
+                    sws => sws.Slots)
+                .Skip(skip)
+                .Limit(pageSize);
 
-            // Get the total count of records
+            var stations = await pipeline.ToListAsync();
+
             var totalCount = await _stations.CountDocumentsAsync(filter);
 
             return new PagedResultDto<StationDto>
@@ -342,7 +344,25 @@ namespace EvBackend.Services
                 TotalPages = (int)Math.Ceiling((double)totalCount / pageSize),
                 CurrentPage = page,
                 PageSize = pageSize,
-                Items = stations.Select(ToDto)
+                Items = stations.Select(s => new StationDto
+                {
+                    StationId = s.StationId,
+                    Name = s.Name,
+                    Location = s.Location,
+                    Latitude = s.Latitude,
+                    Longitude = s.Longitude,
+                    Type = s.Type,
+                    Capacity = s.Capacity,
+                    AvailableSlots = s.AvailableSlots,
+                    IsActive = s.IsActive,
+                    Slots = s.Slots?.Select(slot => new SlotDto
+                    {
+                        SlotId = slot.SlotId,
+                        StationId = slot.StationId,
+                        Number = slot.Number,
+                        Status = slot.Status
+                    }).ToList()
+                })
             };
         }
 
@@ -499,6 +519,12 @@ namespace EvBackend.Services
 
             return stations;
         }
+
+        public class StationWithSlots : Station
+        {
+            public List<Slot> Slots { get; set; }
+        }
+
 
     }
 }
