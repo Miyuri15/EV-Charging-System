@@ -1,3 +1,7 @@
+        // ...existing code...
+// ...existing code...
+        // ...existing code...
+        // ...existing code...
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,6 +26,71 @@ namespace EvBackend.Services
             _slots = database.GetCollection<Slot>("Slots");
             _timeSlots = database.GetCollection<TimeSlot>("TimeSlots");
             _logger = logger;
+        }
+
+        public async Task GenerateTodayAsync()
+        {
+            try
+            {
+                _logger.LogInformation("🕛 Manually generating today's timeslots...");
+                var sriLankaTz = TimeZoneInfo.FindSystemTimeZoneById("Sri Lanka Standard Time");
+                var todaySL = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, sriLankaTz).Date;
+                var addStartUtc = TimeZoneInfo.ConvertTimeToUtc(todaySL, sriLankaTz);
+                var addEndUtc = TimeZoneInfo.ConvertTimeToUtc(todaySL.AddDays(1), sriLankaTz);
+                var existingForDay = await _timeSlots.Find(t =>
+                    t.StartTime >= addStartUtc && t.StartTime < addEndUtc
+                ).AnyAsync();
+                if (existingForDay)
+                {
+                    _logger.LogInformation("⏩ Skipping generation for {Date} — timeslots already exist.", todaySL);
+                    return;
+                }
+                string[] fixedSlots = { "01:15", "03:30", "05:45", "08:00", "10:15",
+                                        "12:30", "14:45", "17:00", "19:15", "21:30" };
+                double sessionMinutes = 120;
+                var slots = await _slots.Find(_ => true).ToListAsync();
+                var newTimeSlots = new List<TimeSlot>();
+                var slotUpdates = new Dictionary<string, List<string>>();
+                foreach (var slot in slots)
+                {
+                    var newIds = new List<string>();
+                    foreach (var startStr in fixedSlots)
+                    {
+                        var startLocal = DateTime.Parse($"{todaySL:yyyy-MM-dd} {startStr}");
+                        var endLocal = startLocal.AddMinutes(sessionMinutes);
+                        var startUtc = TimeZoneInfo.ConvertTimeToUtc(startLocal, sriLankaTz);
+                        var endUtc = TimeZoneInfo.ConvertTimeToUtc(endLocal, sriLankaTz);
+                        var tsId = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
+                        newIds.Add(tsId);
+                        newTimeSlots.Add(new TimeSlot
+                        {
+                            TimeSlotId = tsId,
+                            StationId = slot.StationId,
+                            SlotId = slot.SlotId,
+                            StartTime = startUtc,
+                            EndTime = endUtc,
+                            Status = "Available"
+                        });
+                    }
+                    slotUpdates[slot.SlotId] = newIds;
+                }
+                if (newTimeSlots.Any())
+                    await _timeSlots.InsertManyAsync(newTimeSlots);
+                foreach (var slot in slots)
+                {
+                    var update = Builders<Slot>.Update
+                        .AddToSetEach(s => s.TimeSlotIds, slotUpdates[slot.SlotId])
+                        .Set(s => s.UpdatedAt, DateTime.UtcNow);
+                    await _slots.UpdateOneAsync(s => s.SlotId == slot.SlotId, update);
+                }
+                _logger.LogInformation("Generated {Count} new slots for {Date}.",
+                    newTimeSlots.Count, todaySL.ToShortDateString());
+                _logger.LogInformation("Today's timeslot generation completed successfully.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during today's timeslot generation job.");
+            }
         }
 
         public async Task CleanupAndGenerateNextDayAsync()

@@ -1,3 +1,6 @@
+        // ...existing code...
+
+// ...existing code...
 // --------------------------------------------------------------
 // File Name: TimeSlotController.cs
 // Author: Miyuri Lokuhewage
@@ -24,6 +27,23 @@ namespace EvBackend.Controllers
         public TimeSlotController(TimeSlotSchedulerService scheduler)
         {
             _scheduler = scheduler;
+        }
+
+        /// <summary>
+        /// Manually generates time slots for today (Admin only).
+        /// </summary>
+        /// <remarks>
+        /// This endpoint creates new time slots for today for all stations/slots.
+        /// Use when you want to force-generate today's slots.
+        /// </remarks>
+        /// <response code="200">Time slots for today generated successfully.</response>
+        /// <response code="500">Internal server error occurred during execution.</response>
+        [HttpPost("generate-today")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GenerateTodayTimeSlots()
+        {
+            await _scheduler.GenerateTodayAsync();
+            return Ok(new { message = "✅ Today's time slots generated successfully." });
         }
 
         /// <summary>
